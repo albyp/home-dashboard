@@ -16,7 +16,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     ports:
-      - 127.0.0.1:2375:2375
+      - 127.0.0.1:${DOCKER_PROXY_PORT:-2375}:2375
     read_only: true
     tmpfs:
       - /run
@@ -40,7 +40,7 @@ services:
     environment:
       - PORT=${PORT:-3001}
       - HOST=127.0.0.1
-      - REDIRECT_PORT=3002
+      - REDIRECT_PORT=${REDIRECT_PORT:-3002}
       - DASHBOARD_CONFIG=/app/dashboard.yaml
     # Non-root (uid 1000 can read the Syncthing config). As non-root,
     # tailscaled's LocalAPI only allows reading status.
