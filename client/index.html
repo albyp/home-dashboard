@@ -2,19 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Raspi Dashboard</title>
-    <script>
-      // Set the theme before first paint so light mode doesn't flash dark
-      try {
-        var t = JSON.parse(localStorage.getItem('dash.theme'));
-        if (['dark', 'light', 'pi', 'terminal'].indexOf(t) < 0) {
-          t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
-        }
-        document.documentElement.dataset.theme = t;
-      } catch (e) {}
-    </script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <title>home-dashboard</title>
   </head>
   <body>
     <div id="root"></div>

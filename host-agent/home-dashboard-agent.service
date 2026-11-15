@@ -1,0 +1,16 @@
+[Unit]
+Description=home-dashboard host agent (writes health.json)
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Edit to suit the host, or put these in /etc/default/home-dashboard-agent
+Environment=OUT=/var/lib/home-dashboard/health.json
+EnvironmentFile=-/etc/default/home-dashboard-agent
+ExecStart=/usr/local/bin/home-dashboard-agent
+# Reads only; writes only its own output directory
+ProtectSystem=strict
+ReadWritePaths=/var/lib/home-dashboard
+ProtectHome=read-only
+PrivateTmp=true
+NoNewPrivileges=true

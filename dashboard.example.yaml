@@ -1,0 +1,226 @@
+# home-dashboard config. Copy to dashboard.yaml (it is git-ignored only if you want;
+# it holds no secrets — every secret is a ${VAR} filled from .env).
+#
+# The config says which sources fill the page. It never says where things go:
+# the overview layout is fixed.
+
+title: home-dashboard
+# The host this dashboard runs on. Its stats are read directly.
+host: tiny
+
+# ---------------------------------------------------------------------------
+# Servers. Each host's stats, disks and health checks come from its host agent
+# (host-agent/health-check.sh), which writes one JSON file.
+#   agent:  a path (for this host, mounted into the container) or an https URL
+#   docker: a read-only socket proxy for that host
+#   sleeps: true for a machine that is often off on purpose (no "bad" alerts)
+hosts:
+  - name: tiny
+    model: Lenovo M920q · i7-8700T
+    agent: /agent/tiny.json
+    docker: tcp://127.0.0.1:2375
+  - name: raspi
+    model: Raspberry Pi 4
+    agent: https://raspi.${TAILNET}:8443/health.json
+  - name: rocky
+    model: WSL2 on the desktop PC
+    tailscale: rocky-1
+    sleeps: true
+
+# ---------------------------------------------------------------------------
+# Sidebar. Apps are what the homelab serves people; tools are what you run it with.
+#   check:     the Gatus endpoint name (defaults to the service name)
+#   container: the Docker container name, for the service page
+#   type:      adds a service page section from that app's own API
+#              (sonarr, radarr, seerr, adguard, jellyfin)
+apps:
+  - name: Jellyfin
+    host: tiny
+    url: https://tiny.${TAILNET}:8096
+    container: jellyfin
+    type: jellyfin
+  - name: Seerr
+    host: tiny
+    url: https://tiny.${TAILNET}:5055
+    container: seerr
+    type: seerr
+  - name: Home Assistant
+    host: tiny
+    url: https://tiny.${TAILNET}:8123
+    container: homeassistant
+  - name: Tandoor
+    host: tiny
+    url: https://tiny.${TAILNET}:8081
+    container: tandoor
+  - name: Actual Budget
+    host: tiny
+    url: https://tiny.${TAILNET}:5006
+    container: actual
+
+tools:
+  - name: AdGuard Home
+    host: tiny
+    url: https://tiny.${TAILNET}:3000
+    container: adguardhome
+    type: adguard
+  - name: Sonarr
+    host: tiny
+    url: https://tiny.${TAILNET}:8989
+    container: sonarr
+    type: sonarr
+  - name: Radarr
+    host: tiny
+    url: https://tiny.${TAILNET}:7878
+    container: radarr
+    type: radarr
+  - name: Prowlarr
+    host: tiny
+    url: https://tiny.${TAILNET}:9696
+    container: prowlarr
+  - name: qBittorrent
+    host: tiny
+    url: https://tiny.${TAILNET}:8080
+    container: qbittorrent
+  - name: Syncthing
+    host: tiny
+    url: https://tiny.${TAILNET}:8384
+  - name: Gatus
+    host: tiny
+    url: https://tiny.${TAILNET}:8090
+    container: gatus
+
+# ---------------------------------------------------------------------------
+# Sources. Leave one out and its panel is hidden.
+sources:
+  gatus:
+    url: http://127.0.0.1:8090
+  tailscale:
+    socket: /var/run/tailscale/tailscaled.sock
+  syncthing:
+    url: http://127.0.0.1:8384
+    # API key is read from the mounted config.xml unless set here
+    config: /syncthing/config.xml
+  adguard:
+    url: http://127.0.0.1:3000
+    user: ${ADGUARD_USER}
+    password: ${ADGUARD_PASSWORD}
+  homeassistant:
+    url: http://127.0.0.1:8123
+    token: ${HA_TOKEN}
+  jellyfin:
+    url: http://127.0.0.1:8096
+    key: ${JELLYFIN_API_KEY}
+    # The Jellyfin user whose "keep watching" list the kiosk shows
+    user: ${JELLYFIN_USER_ID}
+  seerr:
+    url: http://127.0.0.1:5055
+    key: ${SEERR_API_KEY}
+  sonarr:
+    url: http://127.0.0.1:8989
+    key: ${SONARR_API_KEY}
+  radarr:
+    url: http://127.0.0.1:7878
+    key: ${RADARR_API_KEY}
+  tandoor:
+    url: http://127.0.0.1:8081
+    token: ${TANDOOR_TOKEN}
+  betbot:
+    url: http://127.0.0.1:8171
+  github:
+    # Optional. Raises GitHub's rate limit; read-only "public repo" access is enough.
+    token: ${GITHUB_TOKEN}
+  google:
+    client_id: ${GOOGLE_CLIENT_ID}
+    client_secret: ${GOOGLE_CLIENT_SECRET}
+    refresh_token: ${GOOGLE_REFRESH_TOKEN}
+  weather:
+    # Open-Meteo, no key needed
+    latitude: ${HOME_LAT}
+    longitude: ${HOME_LON}
+
+# ---------------------------------------------------------------------------
+# Repos: local clones (mounted read-only) compared with GitHub.
+repos:
+  - name: home-dashboard
+    path: /repos/home-dashboard
+    github: albyp/home-dashboard
+  - name: homelab
+    path: /repos/homelab
+    github: albyp/homelab
+
+thresholds:
+  diskWarn: 85
+  diskBad: 95
+  backupHours: 26
+
+# ---------------------------------------------------------------------------
+# Home area on the admin overview
+home:
+  humidors:
+    match: ^sensor\.h5\d{3}_[0-9a-f]+_
+    humidity: [65, 70]
+    temperature: [16, 21]
+  betbot: true
+
+# ---------------------------------------------------------------------------
+# Kiosk (/kiosk). Family screen: no system stats, no betbot.
+kiosk:
+  calendars:
+    - id: ${GOOGLE_FAMILY_CALENDAR_ID}
+  # Google Tasks lists shown as chips. Ticking a task marks it done in Google Tasks.
+  taskLists:
+    - id: ${GOOGLE_TASKS_FAMILY}
+      name: Family
+    - id: ${GOOGLE_TASKS_SHOPPING}
+      name: Shopping
+  # Home Assistant person.* entities
+  people:
+    - person.alby
+  bins:
+    # Collection day; the kiosk shows the bins from 3pm the day before
+    day: tuesday
+    showFrom: "15:00"
+    streams:
+      - name: General waste
+        colour: red
+        every: 1
+      - name: Recycling
+        colour: yellow
+        every: 2
+        # any date this stream was collected
+        anchor: 2026-11-17
+      - name: Garden
+        colour: green
+        every: 2
+        anchor: 2026-11-24
+  # House tab. Only these entities can be changed from the kiosk.
+  house:
+    scenes:
+      - scene.movie_night
+      - scene.dinner
+      - scene.bedtime
+      - scene.leaving_home
+    lights:
+      - light.living_room
+      - light.kitchen
+      - light.porch
+      - light.bedroom
+    climate:
+      - entity: climate.living_room
+        min: 18
+        max: 26
+    humidors: true
+  # System tab: plain names for the family, mapped to Gatus checks
+  system:
+    - label: Movies & TV
+      check: Jellyfin
+    - label: Requests
+      check: Seerr
+    - label: Home controls
+      check: Home Assistant
+    - label: Recipes
+      check: Tandoor
+    - label: New TV downloads
+      check: Sonarr
+    - label: Internet
+      check: Internet

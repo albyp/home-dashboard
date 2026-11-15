@@ -1,10 +1,12 @@
+name: home-dashboard
+
 services:
   # Read-only view of the Docker API. Only container listing is allowed; every
   # write (POST/DELETE) is refused. Mounting docker.sock straight into the
   # dashboard would hand it root on the host, even with :ro.
   socket-proxy:
     image: lscr.io/linuxserver/socket-proxy:latest
-    container_name: raspi-dashboard-socket-proxy
+    container_name: home-dashboard-socket-proxy
     restart: unless-stopped
     environment:
       - CONTAINERS=1
@@ -14,7 +16,6 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     ports:
-      # Loopback only, for the host-networked dashboard
       - 127.0.0.1:2375:2375
     read_only: true
     tmpfs:
@@ -25,31 +26,24 @@ services:
   dashboard:
     build:
       context: .
-      # Bridge-network builds can't resolve DNS here (host resolver is Tailscale's 100.100.100.100)
       network: host
-    image: raspi-dashboard:latest
-    container_name: raspi-dashboard
-    # Comes back after reboots / crashes (docker.service is enabled at boot)
+    image: home-dashboard:latest
+    container_name: home-dashboard
     restart: unless-stopped
     depends_on:
       - socket-proxy
-    # Host networking so we see the Pi's real interfaces and can reach
-    # localhost-only services (Syncthing, HA, native qBittorrent).
-    # The server itself listens on 127.0.0.1 only; `tailscale serve` publishes
-    # it as https://raspi.<tailnet>.ts.net (tailnet only).
+    # Host networking: it reads loopback-only services (Gatus, Syncthing, HA).
+    # The server itself listens on 127.0.0.1 only; `tailscale serve` publishes it
+    # as https://<host>.<tailnet>.ts.net (tailnet only).
     network_mode: host
     env_file: .env
     environment:
       - PORT=${PORT:-3001}
       - HOST=127.0.0.1
-      # Old http://raspi:3001/... links: `tailscale serve --http=3001` -> 3002 -> 301 to PUBLIC_URL
-      # (PUBLIC_URL is set in .env, e.g. https://raspi.<tailnet>.ts.net)
       - REDIRECT_PORT=3002
-      - DOCKER_HOST=tcp://127.0.0.1:2375
-      - SERVICES_CONFIG=/app/services.json
-      - SYNCTHING_CONFIG=/syncthing/config.xml
-    # Non-root (node = uid 1000 = alby, so it can read the Syncthing config).
-    # As non-root, tailscaled's LocalAPI only allows reading status.
+      - DASHBOARD_CONFIG=/app/dashboard.yaml
+    # Non-root (uid 1000 can read the Syncthing config). As non-root,
+    # tailscaled's LocalAPI only allows reading status.
     user: "1000:1000"
     read_only: true
     tmpfs:
@@ -59,11 +53,13 @@ services:
     security_opt:
       - no-new-privileges:true
     volumes:
-      # Directory (not the socket file) so it survives tailscaled restarts
+      # Edit dashboard.yaml and `docker compose restart` — no rebuild needed
+      - ./dashboard.yaml:/app/dashboard.yaml:ro
       - /var/run/tailscale:/var/run/tailscale:ro
-      # Syncthing API key is read from here; directory mount survives config rewrites
-      - /home/alby/.local/state/syncthing:/syncthing:ro
-      # Edit services.json and `docker compose restart` — no rebuild needed
-      - ./services.json:/app/services.json:ro
+      - ${SYNCTHING_CONFIG_DIR:-/home/alby/.local/state/syncthing}:/syncthing:ro
+      # This host's agent output (host-agent/health-check.sh)
+      - /var/lib/home-dashboard:/agent:ro
+      # Repos to compare with GitHub (read-only)
+      - ${REPOS_DIR:-/home/alby/LocalGit}:/repos:ro
     labels:
       dashboard.hide: "true"

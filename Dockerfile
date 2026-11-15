@@ -8,13 +8,14 @@ RUN npm run build
 
 # --- Runtime: Express API + built client ---
 FROM node:24-alpine
+# git: the Repos panel reads local clones (read-only)
+RUN apk add --no-cache git
 WORKDIR /app/server
 ENV NODE_ENV=production
 COPY server/package*.json ./
 RUN npm ci --omit=dev
 COPY server/ ./
 COPY --from=client /app/client/dist ./public
-COPY services.json /app/services.json
 
 USER node
 EXPOSE 3001

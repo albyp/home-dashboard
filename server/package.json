@@ -1,19 +1,23 @@
 {
-  "name": "pi-dashboard-server",
-  "version": "1.0.0",
-  "description": "Backend server for Pi Dashboard",
+  "name": "home-dashboard-server",
+  "version": "2.0.0",
+  "description": "Read-only homelab overview and family kiosk",
   "type": "module",
   "main": "index.js",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "node index.js",
-    "dev": "node index.js"
+    "demo": "node scripts/demo.js",
+    "test": "node --test test/"
   },
   "dependencies": {
     "dockerode": "^4.0.12",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
-    "node-fetch": "^3.3.2",
-    "systeminformation": "^5.21.20"
+    "systeminformation": "^5.21.20",
+    "yaml": "^2.9.1"
   },
   "overrides": {
     "qs": "^6.16.2",

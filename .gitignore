@@ -2,9 +2,14 @@
 client/node_modules
 server/node_modules
 
-# env files
+# secrets and local config
 *.env
+.env
+dashboard.yaml
 
 # build output
 client/dist
 server/public
+
+# local tool settings
+.claude/settings.local.json

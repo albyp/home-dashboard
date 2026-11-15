@@ -1,0 +1,112 @@
+# Example Gatus config for the homelab. Gatus probes every service, keeps the
+# history and sends alerts; home-dashboard reads its results.
+#
+# Endpoint names must match the `check:` (or `name:`) of each app and tool in
+# dashboard.yaml. Keep about 24 h of results so the dashboard's 24-hour bars fill:
+# at a 5-minute interval that is 288 results.
+
+storage:
+  type: sqlite
+  path: /data/gatus.db
+  maximum-number-of-results: 300
+
+web:
+  address: 127.0.0.1
+  port: 8090
+
+alerting:
+  telegram:
+    token: ${TELEGRAM_BOT_TOKEN}
+    id: ${TELEGRAM_CHAT_ID}
+    default-alert:
+      failure-threshold: 3
+      success-threshold: 2
+      send-on-resolved: true
+
+endpoints:
+  - name: Jellyfin
+    group: apps
+    url: http://127.0.0.1:8096/health
+    interval: 5m
+    alerts: [{ type: telegram }]
+    conditions: ["[STATUS] == 200", "[BODY] == Healthy", "[RESPONSE_TIME] < 1000"]
+  - name: Seerr
+    group: apps
+    url: http://127.0.0.1:5055/api/v1/status
+    interval: 5m
+    alerts: [{ type: telegram }]
+    conditions: ["[STATUS] == 200"]
+  - name: Home Assistant
+    group: apps
+    url: http://127.0.0.1:8123/manifest.json
+    interval: 5m
+    alerts: [{ type: telegram }]
+    conditions: ["[STATUS] == 200"]
+  - name: Tandoor
+    group: apps
+    url: http://127.0.0.1:8081/accounts/login/
+    interval: 5m
+    alerts: [{ type: telegram }]
+    conditions: ["[STATUS] == 200"]
+  - name: Actual Budget
+    group: apps
+    url: http://127.0.0.1:5006/
+    interval: 5m
+    alerts: [{ type: telegram }]
+    conditions: ["[STATUS] == 200"]
+  - name: AdGuard Home
+    group: tools
+    url: "127.0.0.1"
+    dns:
+      query-name: "example.com"
+      query-type: "A"
+    interval: 5m
+    alerts: [{ type: telegram }]
+    conditions: ["[DNS_RCODE] == NOERROR"]
+  - name: Sonarr
+    group: tools
+    url: http://127.0.0.1:8989/ping
+    interval: 5m
+    alerts: [{ type: telegram }]
+    conditions: ["[STATUS] == 200"]
+  - name: Radarr
+    group: tools
+    url: http://127.0.0.1:7878/ping
+    interval: 5m
+    alerts: [{ type: telegram }]
+    conditions: ["[STATUS] == 200"]
+  - name: Prowlarr
+    group: tools
+    url: http://127.0.0.1:9696/ping
+    interval: 5m
+    alerts: [{ type: telegram }]
+    conditions: ["[STATUS] == 200"]
+  - name: qBittorrent
+    group: tools
+    url: http://127.0.0.1:8080/
+    interval: 5m
+    alerts: [{ type: telegram }]
+    conditions: ["[STATUS] == 200"]
+  - name: Syncthing
+    group: tools
+    url: http://127.0.0.1:8384/rest/noauth/health
+    interval: 5m
+    alerts: [{ type: telegram }]
+    conditions: ["[STATUS] == 200"]
+  - name: Gatus
+    group: tools
+    url: http://127.0.0.1:8090/health
+    interval: 5m
+    conditions: ["[STATUS] == 200"]
+  - name: home-dashboard
+    group: tools
+    url: http://127.0.0.1:3001/api/health
+    interval: 5m
+    alerts: [{ type: telegram }]
+    conditions: ["[STATUS] == 200"]
+  - name: Internet
+    group: network
+    url: https://1.1.1.1/cdn-cgi/trace
+    interval: 5m
+    alerts: [{ type: telegram }]
+    conditions: ["[STATUS] == 200"]
