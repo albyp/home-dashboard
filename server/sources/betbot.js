@@ -6,7 +6,8 @@ export function betbot(config) {
   const src = config.sources.betbot;
   if (!src?.url || !config.home.betbot) return null;
   return cached('betbot', async () => {
-    const state = await get(`${src.url.replace(/\/$/, '')}/api/state`);
+    // /api/state takes about 3.5 s, so allow more than the usual 5 s
+    const state = await get(`${src.url.replace(/\/$/, '')}/api/state`, { timeout: 10000 });
     const live = state.live || {};
     const engine = state.engine || {};
     return {

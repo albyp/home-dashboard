@@ -20,7 +20,7 @@ async function systemSummary(config) {
     }
     const c = findCheck(gatus, item.check);
     if (!c) return { name: item.label, ok: null, note: 'Unknown' };
-    return { name: item.label, ok: c.status === 'ok', note: c.status === 'ok' ? 'OK' : 'Not working · Alby has been told' };
+    return { name: item.label, ok: c.status === 'ok', note: c.status === 'ok' ? 'OK' : 'Not working' };
   });
   const broken = services.filter(s => s.ok === false);
   if (services.every(s => s.ok === null)) {
@@ -28,15 +28,15 @@ async function systemSummary(config) {
   }
   let level = 'ok';
   let headline = 'Everything is working';
-  let message = 'Watching, recipes and the house controls are all fine.';
+  let message = `${services.map(s => s.name).join(', ')}: all fine.`;
   if (broken.length === 1) {
     level = 'warn';
     headline = 'Almost everything is working';
-    message = `${broken[0].name} isn't working right now. Alby has been sent an alert.`;
+    message = `${broken[0].name} isn't working right now. Tell Alby if it stays that way.`;
   } else if (broken.length > 1) {
     level = 'bad';
     headline = 'A few things are not working';
-    message = `${broken.map(b => b.name).join(', ')} are down. Alby has been sent an alert.`;
+    message = `${broken.map(b => b.name).join(', ')} are down. Tell Alby if they stay that way.`;
   }
   return { level, headline, message, services };
 }

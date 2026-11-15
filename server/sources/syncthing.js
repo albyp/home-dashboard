@@ -72,7 +72,7 @@ export function getSyncthing(config) {
         peers,
         state,
         level,
-        lastChange: folderStats[folder.id]?.lastFile?.at || db.stateChanged || null,
+        lastChange: realDate(folderStats[folder.id]?.lastFile?.at) || realDate(db.stateChanged),
         needBytes: peers.reduce((sum, p) => sum + (p.needBytes || 0), 0)
       };
     }));
@@ -84,4 +84,9 @@ export function getSyncthing(config) {
       folders: out.sort((a, b) => a.label.localeCompare(b.label))
     };
   });
+}
+
+// Syncthing reports "never" as Go's zero time (0001-01-01).
+function realDate(v) {
+  return v && !String(v).startsWith('0001-') ? v : null;
 }
