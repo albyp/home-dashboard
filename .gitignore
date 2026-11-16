@@ -8,3 +8,6 @@ server/node_modules
 # build output
 client/dist
 server/public
+
+# Python bytecode
+__pycache__/
