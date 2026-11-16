@@ -7,6 +7,7 @@ import { authRouter, requireLogin, sessionRole } from './auth.js';
 import { loadConfig, isDemo } from './config.js';
 import { registerAllowList } from './snapshot/actions.js';
 import apiRouter from './routes/api.js';
+import betbotRouter from './routes/betbot.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '../.env') });
@@ -33,6 +34,7 @@ app.use((req, res, next) => {
 app.use(authRouter());
 app.use(requireLogin);
 app.use('/api', apiRouter);
+app.use(betbotRouter());
 
 app.use(express.static(PUBLIC_DIR, { index: false }));
 app.get('*', (req, res, next) => {

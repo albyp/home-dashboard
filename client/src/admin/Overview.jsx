@@ -239,7 +239,7 @@ function Home({ home }) {
         )}
         {bb && (
           <article className="card">
-            <div className="card-head"><h3>betbot</h3><span className="sub">admin view only</span></div>
+            <div className="card-head"><h3>betbot</h3><span className="sub">admin view only · <a href="/betbot/" target="_blank" rel="noopener noreferrer">open betbot</a></span></div>
             {okv(bb) ? (
               <dl className="kv">
                 <Pair k="State" v={bb.live ? 'armed' : 'not armed'} />
