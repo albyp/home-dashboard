@@ -193,3 +193,12 @@ a.svc:hover { color: var(--accent); }
   .dot.bad { animation: pulse 2s ease-in-out infinite; }
   @keyframes pulse { 50% { box-shadow: 0 0 0 6px transparent; } }
 }
+
+/* Claude usage */
+.usage { margin-bottom: 0.7rem; }
+.usage-head { display: flex; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.3rem; }
+.usage-head small { color: var(--muted, inherit); opacity: 0.8; }
+.nudge { border: 1px solid var(--warn); color: var(--warn); border-radius: 8px; padding: 0.5rem 0.7rem; margin: 0 0 0.8rem; }
+
+/* Vault today */
+.vault-counts { display: flex; gap: 0.5rem; margin-bottom: 0.6rem; }

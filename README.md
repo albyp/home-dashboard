@@ -59,11 +59,28 @@ Old `http://<host>:3001/...` links: `sudo tailscale serve --bg --http=3001 http:
   sudo tailscale serve --bg --https=8443 /var/lib/home-dashboard/health.json
   ```
 - **Docker:** run a read-only socket proxy on that host and set `docker:` for it. Only expose the proxy on the tailnet. Add a tailnet grant so that only the dashboard host can reach it.
-- **Machines that are often off** (rocky): set `sleeps: true`. Being offline then shows as a warning, not an outage.
+- **Machines that are often off** (rocky): set `sleeps: true`. While it is offline, its tile says so, its services show as off (grey), and Syncthing folders shared with it read "up to date · rocky asleep". None of it is raised as a problem.
 
 ### Gatus
 
 `gatus/config.example.yaml` is a starting point. Endpoint names must match the apps' and tools' `check:` (or `name:`) in `dashboard.yaml`. Keep about 300 results per endpoint at a 5-minute interval, so the 24-hour bars fill.
+
+### Claude usage (optional)
+
+The admin overview can show Claude subscription usage (5-hour and weekly limits) with a "Get busy" nudge when a window is about to reset mostly unused. The numbers come from the endpoint behind Claude Code's `/usage`, which is **not a published API**.
+
+1. On the host, log in to Claude Code with your subscription: `claude`, then `/login`.
+2. Install the timer. It renews the Claude Code login when it is close to expiry and writes only the usage numbers to `~/.local/state/claude-usage/usage.json`:
+   ```bash
+   mkdir -p ~/.local/state/claude-usage
+   sudo cp host-agent/claude-usage.service host-agent/claude-usage.timer /etc/systemd/system/
+   sudo systemctl daemon-reload && sudo systemctl enable --now claude-usage.timer
+   ```
+3. `sources.claude.file` in `dashboard.yaml` points at the mounted file. The dashboard never holds the Claude login.
+
+### Vault today (optional)
+
+`sources.vault` shows notes new or changed today in an Obsidian vault mounted read-only (`VAULT_DIR`). A note is new when its frontmatter `date:` is today.
 
 ### Google (kiosk calendar and tasks)
 

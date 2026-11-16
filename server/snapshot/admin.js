@@ -9,6 +9,8 @@ import { getRepos } from '../sources/repos.js';
 import { adguard, internet, jellyfinSessions, jellyfinAddedThisWeek, seerrRequests, arrDetails } from '../sources/apps.js';
 import { humidors } from '../sources/homeassistant.js';
 import { betbot } from '../sources/betbot.js';
+import { claudeUsage } from '../sources/claude.js';
+import { vaultToday } from '../sources/vault.js';
 
 const ok = v => v && !v.error;
 const RANK = { bad: 3, warn: 2, unknown: 1, ok: 0 };
@@ -51,8 +53,10 @@ async function hostTile(config, host, ts) {
 
 function serviceStatus(svc, gatus, hosts) {
   const check = findCheck(gatus, svc.check);
-  if (check) return { status: check.status, check };
   const host = hosts.find(h => h.name === svc.host);
+  // A service on a machine that sleeps on purpose (rocky) is just off while it sleeps
+  if (host?.sleeps && host.online === false) return { status: 'off', check };
+  if (check) return { status: check.status, check };
   const container = svc.container && host?.containerList?.find(c => c.name === svc.container);
   if (container) return { status: container.state === 'running' && container.health !== 'unhealthy' ? 'ok' : 'bad', check: null };
   if (host && host.online === false) return { status: 'off', check: null };
@@ -71,7 +75,8 @@ function problems(config, d) {
     }
   }
   for (const h of d.hosts) {
-    if (h.online === false) add(h.sleeps ? 'warn' : 'bad', `${h.name} is offline`, h.sleeps ? 'expected when the machine sleeps' : 'not answering', h.lastSeen);
+    // A machine that sleeps on purpose (rocky) being off is normal: its tile says so, it is not a problem
+    if (h.online === false && !h.sleeps) add('bad', `${h.name} is offline`, 'not answering', h.lastSeen);
     if (h.online === null) add('warn', `No data from ${h.name}`, 'its host agent, Tailscale and Docker are not reachable', null);
     const agent = h.agent;
     if (ok(agent) && agent.ageMinutes > 30 && h.online) add('warn', `${h.name} health report is stale`, `last report ${agent.ageMinutes} min ago`, agent.generatedAt);
@@ -99,7 +104,7 @@ function problems(config, d) {
 export async function adminSnapshot() {
   const config = loadConfig();
   const ts = await getTailscale(config);
-  const [gatus, hosts, syncthing, repos, ag, net, sessions, added, requests, hum, bb] = await Promise.all([
+  const [gatus, hosts, syncthing, repos, ag, net, sessions, added, requests, hum, bb, claude, vault] = await Promise.all([
     getGatus(config),
     Promise.all(config.hosts.map(h => hostTile(config, h, ts))),
     getSyncthing(config),
@@ -110,7 +115,9 @@ export async function adminSnapshot() {
     jellyfinAddedThisWeek(config),
     seerrRequests(config),
     humidors(config),
-    betbot(config)
+    betbot(config),
+    claudeUsage(config),
+    vaultToday(config)
   ]);
 
   const services = allServices(config).map(svc => {
@@ -148,11 +155,13 @@ export async function adminSnapshot() {
     // Checks that belong to a sidebar service first, then any other Gatus checks
     checks: checks
       ? [
-        ...services.filter(s => s.check).map(s => ({ ...s.check, serviceId: s.id, host: s.host, display: s.name })),
+        ...services.filter(s => s.check).map(s => ({ ...s.check, status: s.status === 'off' ? 'off' : s.check.status, serviceId: s.id, host: s.host, display: s.name })),
         ...checks.filter(c => !services.some(s => s.check?.key === c.key)).map(c => ({ ...c, serviceId: null, host: null, display: c.name }))
       ]
       : gatus,
     home: { humidors: hum, betbot: bb },
+    claude,
+    vault,
     today: {
       streams: ok(sessions) ? sessions : null,
       requests: ok(requests) ? { pending: requests.pending } : null,

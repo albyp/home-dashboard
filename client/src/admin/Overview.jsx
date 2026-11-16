@@ -157,7 +157,7 @@ function Syncthing({ st }) {
   if (!st) return null;
   if (st.error) return <Area title="Syncthing"><Unavailable what="Syncthing" error={st.error} /></Area>;
   return (
-    <Area title="Syncthing" summary={`${st.devicesOnline} of ${st.devicesTotal} devices online`}>
+    <Area title="Syncthing" summary={`${st.devicesOnline} of ${st.devicesTotal} devices online${st.devicesAsleep?.length ? ` · ${st.devicesAsleep.join(', ')} asleep` : ''}`}>
       <article className="card">
         <ul className="rows">
           {st.folders.map(f => (
@@ -256,6 +256,75 @@ function Home({ home }) {
   );
 }
 
+function resetsIn(iso) {
+  if (!iso) return '';
+  const ms = new Date(iso).getTime() - Date.now();
+  if (ms <= 0) return 'resetting now';
+  const h = Math.floor(ms / 3600000);
+  const m = Math.floor((ms % 3600000) / 60000);
+  if (h >= 24) return `resets in ${Math.floor(h / 24)}d ${h % 24}h`;
+  return h ? `resets in ${h}h ${m}m` : `resets in ${m}m`;
+}
+
+function UsageRow({ label, w }) {
+  if (!w) return null;
+  const level = w.utilization >= 90 ? 'bad' : w.utilization >= 70 ? 'warn' : '';
+  return (
+    <div className="usage">
+      <div className="usage-head"><b>{label}</b><small>{w.utilization}% used · {resetsIn(w.resetsAt)}</small></div>
+      <div className={`bar ${level}`}><span style={{ width: `${Math.min(100, w.utilization)}%` }} /></div>
+    </div>
+  );
+}
+
+// Claude subscription usage, with a nudge when a window is about to reset mostly unused
+function ClaudeCard({ c }) {
+  if (!c) return null;
+  return (
+    <Area title="Claude usage" summary={okv(c) ? (c.stale ? `stale · ${c.stale}` : `checked ${ago(c.fetchedAt)}`) : null}>
+      <article className="card">
+        {okv(c) ? (
+          <>
+            {c.nudges.map(nd => (
+              <p key={nd.window} className="nudge">Get busy: {nd.unusedPct}% of your {nd.window} limit is unused and it {resetsIn(nd.resetsAt)}.</p>
+            ))}
+            <UsageRow label="5-hour" w={c.fiveHour} />
+            <UsageRow label="Weekly" w={c.sevenDay} />
+            <UsageRow label="Weekly (Opus)" w={c.sevenDayOpus} />
+            <p className="note">From Claude Code's own usage data on the host (unofficial; may change).</p>
+          </>
+        ) : <Unavailable what="Claude usage" error={c.error} />}
+      </article>
+    </Area>
+  );
+}
+
+// Notes written in the vault today
+function VaultCard({ v }) {
+  if (!v) return null;
+  return (
+    <Area title={okv(v) ? `${v.label} today` : 'Vault today'} summary={okv(v) ? `${n(v.notes)} notes` : null}>
+      <article className="card">
+        {okv(v) ? (
+          <>
+            <div className="vault-counts"><Chip level="ok">{v.newCount} new</Chip><Chip level="warn">{v.updatedCount} updated</Chip></div>
+            {v.recent.length ? (
+              <ul className="rows">
+                {v.recent.map(r => (
+                  <li key={r.folder + r.title}>
+                    <Dot status={r.kind === 'new' ? 'ok' : 'warn'} />
+                    <div><b>{r.title}</b><small>{r.folder ? `${r.folder} · ` : ''}{ago(r.modified)}</small></div>
+                  </li>
+                ))}
+              </ul>
+            ) : <p className="note">Nothing written today yet.</p>}
+          </>
+        ) : <Unavailable what="The vault" error={v.error} />}
+      </article>
+    </Area>
+  );
+}
+
 function Today({ today }) {
   const tiles = [];
   if (today.streams) tiles.push(['Watching now', today.streams.streams, `Jellyfin${today.streams.transcoding ? ` · ${today.streams.transcoding} transcoding` : ''}`]);
@@ -315,6 +384,12 @@ export default function Overview({ poll }) {
 
       <Checks checks={data.checks} />
       <Home home={data.home} />
+      {(data.claude || data.vault) && (
+        <div className="grid2">
+          <ClaudeCard c={data.claude} />
+          <VaultCard v={data.vault} />
+        </div>
+      )}
       <Today today={data.today} />
 
       <p className="note">Read-only by design: the server only sends GET requests to its sources and never passes their keys to the browser.</p>

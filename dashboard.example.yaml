@@ -126,6 +126,13 @@ sources:
     token: ${TANDOOR_TOKEN}
   betbot:
     url: http://127.0.0.1:8171
+  claude:
+    # Written by host-agent/claude-usage.py (claude-usage.timer); numbers only
+    file: /claude-usage/usage.json
+  vault:
+    # Notes new or changed today; "new" = frontmatter date is today
+    path: /vault
+    label: Albyte
   github:
     # Optional. Raises GitHub's rate limit; read-only "public repo" access is enough.
     token: ${GITHUB_TOKEN}

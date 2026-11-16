@@ -36,6 +36,9 @@ export function getSyncthing(config) {
     ]);
     const myId = status.myID;
     const nameOf = id => devices.find(d => d.deviceID === id)?.name || id.slice(0, 7);
+    // Devices on machines that sleep on purpose (hosts with sleeps: true): being away is normal
+    const sleepy = new Set(config.hosts.filter(h => h.sleeps)
+      .flatMap(h => [h.name, h.tailscale]).filter(Boolean).map(n => n.toLowerCase()));
     const peerIds = devices.map(d => d.deviceID).filter(id => id !== myId);
 
     const out = await Promise.all(folders.map(async folder => {
@@ -48,6 +51,7 @@ export function getSyncthing(config) {
         return {
           name: nameOf(deviceID),
           connected,
+          asleep: !connected && sleepy.has(nameOf(deviceID).toLowerCase()),
           completion: completion ? Math.floor(completion.completion * 10) / 10 : null,
           needBytes: completion?.needBytes ?? null
         };
@@ -58,12 +62,13 @@ export function getSyncthing(config) {
       if (folder.paused) { state = 'paused'; level = 'warn'; }
       else if (db.errors > 0 || db.pullErrors > 0) { state = `${db.errors || db.pullErrors} errors`; level = 'bad'; }
       else if (db.state === 'syncing' || db.needFiles > 0) { state = 'syncing'; }
-      else if (peers.length && peers.every(p => !p.connected)) { state = 'no devices online'; level = 'warn'; }
-      else if (peers.some(p => !p.connected)) {
-        const waiting = peers.filter(p => !p.connected).map(p => p.name).join(', ');
+      else if (peers.length && peers.every(p => !p.connected && !p.asleep)) { state = 'no devices online'; level = 'warn'; }
+      else if (peers.some(p => !p.connected && !p.asleep)) {
+        const waiting = peers.filter(p => !p.connected && !p.asleep).map(p => p.name).join(', ');
         state = `waiting for ${waiting}`;
         level = 'warn';
       } else if (peers.some(p => p.completion != null && p.completion < 100)) { state = 'syncing'; }
+      else if (peers.some(p => p.asleep)) { state = `up to date · ${peers.filter(p => p.asleep).map(p => p.name).join(', ')} asleep`; }
 
       return {
         id: folder.id,
@@ -80,6 +85,7 @@ export function getSyncthing(config) {
     return {
       thisDevice: nameOf(myId),
       devicesOnline: peerIds.filter(id => connections.connections?.[id]?.connected).length + 1,
+      devicesAsleep: peerIds.filter(id => !connections.connections?.[id]?.connected && sleepy.has(nameOf(id).toLowerCase())).map(nameOf),
       devicesTotal: peerIds.length + 1,
       folders: out.sort((a, b) => a.label.localeCompare(b.label))
     };

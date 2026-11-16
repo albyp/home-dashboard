@@ -42,6 +42,8 @@ services:
       - HOST=127.0.0.1
       - REDIRECT_PORT=${REDIRECT_PORT:-3002}
       - DASHBOARD_CONFIG=/app/dashboard.yaml
+      # "today" for the vault card
+      - TZ=${TZ:-Australia/Perth}
     # Non-root (uid 1000 can read the Syncthing config). As non-root,
     # tailscaled's LocalAPI only allows reading status.
     user: "1000:1000"
@@ -61,5 +63,9 @@ services:
       - /var/lib/home-dashboard:/agent:ro
       # Repos to compare with GitHub (read-only)
       - ${REPOS_DIR:-/home/alby/LocalGit}:/repos:ro
+      # Vault for the "today" card (read-only)
+      - "${VAULT_DIR:-/home/alby/Albyte (Obsidian)}:/vault:ro"
+      # Claude usage numbers only, written by host-agent/claude-usage.py
+      - ${CLAUDE_USAGE_DIR:-/home/alby/.local/state/claude-usage}:/claude-usage:ro
     labels:
       dashboard.hide: "true"

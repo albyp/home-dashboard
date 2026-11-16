@@ -56,9 +56,7 @@ export function admin() {
       { level: 'bad', title: 'Sonarr is failing its check', detail: 'HTTP 502 · Telegram alert sent', since: ago(14 * MIN), link: '/s/sonarr' },
       { level: 'warn', title: 'tiny · /srv/media is 87% full', detail: 'tiny', since: null },
       { level: 'warn', title: 'tiny: OS updates', detail: 'Reboot needed · kernel 6.8.0-49 installed', since: ago(5 * HOUR) },
-      { level: 'warn', title: 'homelab: 2 to push', detail: 'betbot: 1 uncommitted', since: null },
-      { level: 'warn', title: 'rocky is offline', detail: 'expected when the machine sleeps', since: ago(9 * HOUR) },
-      { level: 'warn', title: 'Syncthing "rocky-backup": waiting for rocky', detail: 'tiny · rocky', since: ago(9 * HOUR) }
+      { level: 'warn', title: 'homelab: 2 to push', detail: 'betbot: 1 uncommitted', since: null }
     ],
     sidebar: {
       apps: services.filter(s => s.kind === 'app').map(({ check, ...s }) => s),
@@ -103,10 +101,11 @@ export function admin() {
       thisDevice: 'tiny',
       devicesOnline: 2,
       devicesTotal: 3,
+      devicesAsleep: ['rocky'],
       folders: [
         { id: 'albyte', label: 'Albyte', devices: ['tiny', 'rocky', 'BMS0090'], state: 'up to date', level: 'ok', lastChange: ago(4 * MIN), needBytes: 0 },
         { id: 'appdata', label: 'appdata-backup', devices: ['tiny'], state: 'up to date', level: 'ok', lastChange: ago(7 * HOUR), needBytes: 0 },
-        { id: 'rocky-backup', label: 'rocky-backup', devices: ['tiny', 'rocky'], state: 'waiting for rocky', level: 'warn', lastChange: ago(9 * HOUR), needBytes: 1.4 * GB },
+        { id: 'rocky-backup', label: 'rocky-backup', devices: ['tiny', 'rocky'], state: 'up to date · rocky asleep', level: 'ok', lastChange: ago(9 * HOUR), needBytes: 0 },
         { id: 'secrets', label: 'secrets', devices: ['tiny', 'rocky'], state: 'up to date', level: 'ok', lastChange: ago(3 * 86400000), needBytes: 0 }
       ]
     },
@@ -120,6 +119,25 @@ export function admin() {
         ]
       },
       betbot: { live: true, todayPnlCents: 1240, sinceArmPnlCents: 3175, openOrders: 3, recorder: 'running', lastError: null }
+    },
+    claude: {
+      fetchedAt: ago(2 * MIN),
+      stale: null,
+      fiveHour: { utilization: 22, resetsAt: new Date(Date.now() + 40 * MIN).toISOString() },
+      sevenDay: { utilization: 48, resetsAt: new Date(Date.now() + 3 * 86400000).toISOString() },
+      sevenDayOpus: null,
+      nudges: [{ window: '5-hour', unusedPct: 78, resetsAt: new Date(Date.now() + 40 * MIN).toISOString() }]
+    },
+    vault: {
+      label: 'Albyte',
+      notes: 112,
+      newCount: 2,
+      updatedCount: 3,
+      recent: [
+        { title: '2026-11-16-claude-home-dashboard-usage', folder: 'logs', kind: 'new', modified: ago(12 * MIN) },
+        { title: 'home-dashboard', folder: 'projects', kind: 'updated', modified: ago(15 * MIN) },
+        { title: 'dotfiles', folder: 'projects', kind: 'updated', modified: ago(2 * HOUR) }
+      ]
     },
     today: {
       streams: { streams: 2, transcoding: 1 },
