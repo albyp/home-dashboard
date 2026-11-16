@@ -1,12 +1,13 @@
 import React from 'react';
 import SystemStats from './components/SystemStats';
-import DockerStatus from './components/DockerStatus';
 import HAWidget from './components/HAWidget';
 import HostServices from './components/HostServices';
 import TailscaleStatus from './components/TailscaleStatus';
 import SyncthingStatus from './components/SyncthingStatus';
 import HumidorStatus from './components/HumidorStatus';
 import BetbotStatus from './components/BetbotStatus';
+import VaultActivity from './components/VaultActivity';
+import ClaudeUsage from './components/ClaudeUsage';
 import useDashboard from './hooks/useDashboard';
 import { usePrefs } from './prefs';
 import { FiEye, FiEyeOff, FiLogOut } from 'react-icons/fi';
@@ -27,7 +28,7 @@ function App() {
     <div className={`dashboard${isStale ? ' stale' : ''}`}>
       <header className="dashboard-header">
         <div>
-          <h1>{data?.hostname || 'raspi'}</h1>
+          <h1>{data?.hostname || 'dashboard'}</h1>
           <div className="header-ips mono">
             {data?.network?.localIp && <span>LAN {redact(data.network.localIp)}</span>}
             {tsSelf?.ip && <span>TS {redact(tsSelf.ip)}</span>}
@@ -65,9 +66,10 @@ function App() {
         <SystemStats data={data?.system} />
         <HumidorStatus data={data?.humidor} />
         <BetbotStatus data={data?.betbot} />
-        <DockerStatus data={data?.docker} />
-        <HostServices data={data?.services} />
+        <HostServices data={data?.services} docker={data?.docker} />
         <SyncthingStatus data={data?.syncthing} />
+        <VaultActivity data={data?.vault} />
+        <ClaudeUsage data={data?.claude} />
         <TailscaleStatus data={data?.tailscale} />
         <HAWidget data={data?.homeassistant} />
       </div>

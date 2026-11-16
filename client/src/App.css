@@ -434,3 +434,23 @@
 .betbot .bb-recorder { margin-top: 14px; }
 .betbot .bb-recorder .muted { margin-left: 0; font-size: 0.78rem; }
 .betbot .widget-error { margin-top: 8px; }
+
+/* Machines: an offline machine is muted, not alarming */
+.host-services h2 > span:first-child { display: inline-flex; align-items: center; gap: 0.45rem; }
+.host-services.offline { opacity: 0.7; }
+.host-services .app-grid + .service-list { margin-top: 0.75rem; }
+
+/* Albyte today */
+.vault h2 > span:first-child { display: inline-flex; align-items: center; gap: 0.45rem; }
+.vault-counts { display: flex; gap: 0.5rem; margin-bottom: 0.6rem; }
+.vault-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.35rem; }
+.vault-list li { display: flex; align-items: center; gap: 0.5rem; min-width: 0; font-size: 0.85rem; }
+.vault-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vault-list .muted { font-size: 0.75rem; white-space: nowrap; }
+
+/* Claude usage */
+.claude-usage h2 > span:first-child { display: inline-flex; align-items: center; gap: 0.45rem; }
+.cu-row { margin-bottom: 0.6rem; }
+.cu-head { display: flex; justify-content: space-between; gap: 0.5rem; font-size: 0.85rem; margin-bottom: 0.25rem; }
+.cu-head .muted { font-size: 0.75rem; }
+.cu-nudge { border: 1px solid var(--warning); color: var(--warning); border-radius: var(--radius-sm, 6px); padding: 0.45rem 0.6rem; font-size: 0.85rem; margin-bottom: 0.6rem; }

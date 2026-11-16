@@ -48,6 +48,10 @@ services:
       - DOCKER_HOST=tcp://127.0.0.1:2375
       - SERVICES_CONFIG=/app/services.json
       - SYNCTHING_CONFIG=/syncthing/config.xml
+      # "today" for the Albyte panel
+      - TZ=Australia/Perth
+      - VAULT_DIR=/vault
+      - CLAUDE_USAGE_FILE=/claude-usage/usage.json
     # Non-root (node = uid 1000 = alby, so it can read the Syncthing config).
     # As non-root, tailscaled's LocalAPI only allows reading status.
     user: "1000:1000"
@@ -65,5 +69,9 @@ services:
       - /home/alby/.local/state/syncthing:/syncthing:ro
       # Edit services.json and `docker compose restart` — no rebuild needed
       - ./services.json:/app/services.json:ro
+      # Albyte vault, read-only, for the "Albyte today" panel
+      - "${HOME}/Albyte (Obsidian):/vault:ro"
+      # Claude usage numbers only, written by scripts/claude-usage.py (claude-usage.timer)
+      - ${HOME}/.local/state/claude-usage:/claude-usage:ro
     labels:
       dashboard.hide: "true"

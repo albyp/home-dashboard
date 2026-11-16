@@ -22,6 +22,40 @@ function linkLabel(c, href) {
   return url.port ? `:${url.port}${path}` : url.host + path;
 }
 
+// The container cards on their own, for a machine's card in HostServices
+export function DockerApps({ containers }) {
+  if (!containers.length) return <div className="empty">No containers found</div>;
+  return (
+    <div className="app-grid">
+      {containers.map(c => {
+        const href = linkFor(c);
+        const Tag = href ? 'a' : 'div';
+        return (
+          <Tag
+            key={c.id}
+            className={`app-card${href ? ' linked' : ''}`}
+            {...(href ? { href, target: '_blank', rel: 'noopener noreferrer' } : {})}
+            title={`${c.image}\n${c.status}${c.ports.length ? `\nPorts: ${c.ports.join(', ')}` : ''}`}
+          >
+            <ServiceIcon hint={`${c.image} ${c.name}`} />
+            <div className="app-body">
+              <div className="app-name">
+                <span className={`dot ${containerColor(c)}`} />
+                {c.displayName}
+              </div>
+              <div className="app-sub">
+                {linkLabel(c, href)}
+                <span className="app-status"> · {c.status.replace(/\s*\(.*\)/, '')}</span>
+              </div>
+            </div>
+            {href && <FiExternalLink className="app-open" aria-hidden="true" />}
+          </Tag>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function DockerStatus({ data }) {
   if (!data) return <section className="widget">Loading Docker status...</section>;
 

@@ -9,6 +9,8 @@ import { getSyncthingInfo } from '../services/syncthing.js';
 import { getServicesInfo } from '../services/services.js';
 import { getHumidorInfo } from '../services/humidor.js';
 import { getBetbotInfo } from '../services/betbot.js';
+import { getVaultInfo } from '../services/vault.js';
+import { getClaudeUsage } from '../services/claude.js';
 
 const router = express.Router();
 
@@ -25,7 +27,7 @@ async function safe(name, fn) {
 router.get('/status', async (req, res) => {
   const tailscalePromise = safe('tailscale', getTailscaleInfo);
 
-  const [system, docker, homeassistant, network, tailscale, syncthing, services, humidor, betbot] = await Promise.all([
+  const [system, docker, homeassistant, network, tailscale, syncthing, services, humidor, betbot, vault, claude] = await Promise.all([
     safe('system', getSystemInfo),
     safe('docker', getDockerInfo),
     safe('homeassistant', getHomeAssistantInfo),
@@ -35,7 +37,9 @@ router.get('/status', async (req, res) => {
     // Remote services resolve hostnames via tailscale status
     tailscalePromise.then(ts => safe('services', () => getServicesInfo(ts))),
     safe('humidor', getHumidorInfo),
-    safe('betbot', getBetbotInfo)
+    safe('betbot', getBetbotInfo),
+    safe('vault', getVaultInfo),
+    safe('claude', getClaudeUsage)
   ]);
 
   res.json({
@@ -49,7 +53,9 @@ router.get('/status', async (req, res) => {
     syncthing,
     services,
     humidor,
-    betbot
+    betbot,
+    vault,
+    claude
   });
 });
 

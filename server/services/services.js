@@ -76,21 +76,44 @@ async function probeService(host, svc, address) {
   };
 }
 
+function offlineService(host, svc) {
+  const scheme = svc.https ? 'https' : 'http';
+  return {
+    name: svc.name,
+    kind: svc.kind || null,
+    url: `${scheme}://${host.linkHost || host.host}:${svc.port}${svc.path || '/'}`,
+    scheme,
+    port: svc.port,
+    path: svc.path || '/',
+    up: false,
+    status: null,
+    latency: null,
+    error: 'machine offline',
+    details: null
+  };
+}
+
 export async function getServicesInfo(tailscale) {
   const { hosts = [] } = loadConfig();
   const lookup = tailscaleLookup(tailscale);
 
   return Promise.all(hosts.map(async (host) => {
     const node = host.local ? null : lookup.get(host.host.toLowerCase());
+    // A machine that's off the tailnet (rocky is often off) isn't probed: every service
+    // is simply down because the machine is, which is normal rather than a fault
+    const offline = !!node && !node.online;
     // Prefer the tailscale IP when we know it; fall back to normal DNS
     const address = host.address || (host.local ? '127.0.0.1' : node?.ip || host.host);
-    const services = await Promise.all((host.services || []).map(svc => probeService(host, svc, address)));
+    const services = await Promise.all((host.services || []).map(svc => offline
+      ? offlineService(host, svc)
+      : probeService(host, svc, address)));
     return {
       name: host.name || host.host,
       host: host.host,
       local: !!host.local,
+      offline,
       description: host.description || null,
-      tailscale: node ? { online: node.online, connection: node.connection, os: node.os } : null,
+      tailscale: node ? { online: node.online, connection: node.connection, os: node.os, lastSeen: node.lastSeen } : null,
       services
     };
   }));

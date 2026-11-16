@@ -1,0 +1,14 @@
+[Unit]
+Description=Fetch Claude subscription usage for the dashboard
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=alby
+ExecStart=/usr/bin/python3 /home/alby/LocalGit/raspi-server/scripts/claude-usage.py
+# Only needs its own state folder and the Claude Code login
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/home/alby/.claude /home/alby/.local/state/claude-usage
+PrivateTmp=true

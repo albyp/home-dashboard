@@ -11,9 +11,12 @@ const STATE_COLOR = {
   'sync-preparing': 'amber',
   'sync-waiting': 'amber',
   paused: 'grey',
-  disconnected: 'red',
+  // A peer that isn't connected is usually just switched off (rocky): grey, not an alarm
+  disconnected: 'grey',
   error: 'red'
 };
+
+const STATE_LABEL = { disconnected: 'offline' };
 
 export default function SyncthingStatus({ data }) {
   const { redact } = usePrefs();
@@ -31,6 +34,7 @@ export default function SyncthingStatus({ data }) {
   const { folder, devices } = data;
   const folderState = folder.paused ? 'paused' : folder.errors > 0 ? 'error' : folder.state;
   const connected = devices.filter(d => d.connected).length;
+  const offline = devices.filter(d => !d.connected && !d.paused).map(d => d.name);
 
   return (
     <section className="widget syncthing">
@@ -38,7 +42,10 @@ export default function SyncthingStatus({ data }) {
         <a className="h2-link" href={localUrl({ port: 8384 })} target="_blank" rel="noopener noreferrer">
           <SiSyncthing /> {folder.label}
         </a>
-        <span className="h2-meta">{connected}/{devices.length} peers connected</span>
+        <span className="h2-meta">
+          {connected}/{devices.length} peers connected
+          {offline.length > 0 && <span className="muted"> · {offline.join(', ')} offline</span>}
+        </span>
       </h2>
 
       <div className="st-folder">
@@ -59,7 +66,7 @@ export default function SyncthingStatus({ data }) {
           <div className="st-device-head">
             <span className="dot green" />
             <span className="st-name">{data.thisDevice}</span>
-            <span className="muted">this Pi · v{data.version?.replace(/^v/, '')}</span>
+            <span className="muted">this machine · v{data.version?.replace(/^v/, '')}</span>
           </div>
         </div>
         {devices.map(d => (
@@ -67,19 +74,20 @@ export default function SyncthingStatus({ data }) {
             <div className="st-device-head">
               <span className={`dot ${STATE_COLOR[d.state]}`} />
               <span className="st-name">{d.name}</span>
-              <span className={`pill small ${STATE_COLOR[d.state]}`}>{d.state}</span>
+              <span className={`pill small ${STATE_COLOR[d.state]}`}>{STATE_LABEL[d.state] || d.state}</span>
             </div>
             <div className="st-device-meta muted">
               {d.connected
                 ? <>{d.connectionType?.replace(/-(client|server)$/, '')} · <span className="mono">{redact(d.address)}</span></>
                 : <>last seen {timeAgo(d.lastSeen)}</>}
             </div>
-            {d.completion != null && (
+            {d.connected && d.completion != null && (
               <div className="bar" title={`${d.completion}% in sync`}>
                 <div className={`fill ${d.completion < 100 ? 'amber' : ''}`} style={{ width: `${d.completion}%` }} />
               </div>
             )}
-            {d.needItems > 0 && <div className="st-device-meta muted">{d.needItems} items behind · {formatBytes(d.needBytes)}</div>}
+            {d.connected && d.needItems > 0 && <div className="st-device-meta muted">{d.needItems} items behind · {formatBytes(d.needBytes)}</div>}
+            {!d.connected && d.needItems > 0 && <div className="st-device-meta muted">{d.needItems} items waiting for it to come online</div>}
           </div>
         ))}
       </div>

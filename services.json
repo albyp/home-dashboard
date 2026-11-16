@@ -1,22 +1,58 @@
 {
   "hosts": [
     {
+      "name": "tiny",
+      "host": "tiny",
+      "local": true,
+      "description": "Native services on tiny",
+      "services": [
+        {
+          "name": "Syncthing",
+          "kind": "syncthing",
+          "port": 8384
+        }
+      ]
+    },
+    {
       "name": "raspi",
       "host": "raspi",
-      "local": true,
-      "description": "Native services on the Pi (not in Docker)",
+      "description": "Home Assistant and native services (until they move to tiny)",
       "services": [
-        { "name": "qBittorrent", "kind": "qbittorrent", "port": 8090, "auth": "RASPI_QBIT" },
-        { "name": "Syncthing", "kind": "syncthing", "port": 8384 }
+        {
+          "name": "Home Assistant",
+          "kind": "homeassistant",
+          "port": 8123
+        },
+        {
+          "name": "qBittorrent",
+          "kind": "qbittorrent",
+          "port": 8090,
+          "auth": "RASPI_QBIT"
+        },
+        {
+          "name": "Syncthing",
+          "kind": "syncthing",
+          "port": 8384
+        }
       ]
     },
     {
       "name": "rocky",
       "host": "rocky-1",
-      "description": "Main PC — Docker in WSL",
+      "description": "Main PC (Docker in WSL). Often off.",
       "services": [
-        { "name": "Jellyfin", "kind": "jellyfin", "port": 8096, "path": "/web/" },
-        { "name": "qBittorrent", "kind": "qbittorrent", "port": 8080, "auth": "ROCKY_QBIT" }
+        {
+          "name": "Jellyfin",
+          "kind": "jellyfin",
+          "port": 8096,
+          "path": "/web/"
+        },
+        {
+          "name": "qBittorrent",
+          "kind": "qbittorrent",
+          "port": 8080,
+          "auth": "ROCKY_QBIT"
+        }
       ]
     }
   ]
