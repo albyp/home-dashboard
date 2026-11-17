@@ -4,6 +4,7 @@ import { internet, jellyfinResume, seerrRequests, tandoorToday } from '../source
 import { humidors, people, house } from '../sources/homeassistant.js';
 import { calendar, tasks } from '../sources/google.js';
 import { weather } from '../sources/weather.js';
+import { solar } from '../sources/solar.js';
 import { bins } from '../sources/bins.js';
 
 // The family screen. Deliberately reduced: no IPs, hosts, containers or betbot.
@@ -43,8 +44,9 @@ async function systemSummary(config) {
 
 export async function kioskSnapshot() {
   const config = loadConfig();
-  const [w, cal, tk, who, dinner, h, hum, resume, requests, system] = await Promise.all([
+  const [w, sun, cal, tk, who, dinner, h, hum, resume, requests, system] = await Promise.all([
     weather(config),
+    solar(config),
     calendar(config),
     tasks(config),
     people(config),
@@ -59,6 +61,7 @@ export async function kioskSnapshot() {
   return {
     generatedAt: new Date().toISOString(),
     weather: keep(w),
+    solar: keep(sun),
     calendar: keep(cal),
     tasks: keep(tk),
     bins: bins(config),

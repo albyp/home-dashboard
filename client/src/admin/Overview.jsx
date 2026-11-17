@@ -1,8 +1,43 @@
 import { useTick } from '../api.js';
 import { ago, since, usedOf, duration, when, pct, n } from '../format.js';
 import { Area, Chip, Dot, Link, Ring, Spark, Ticks, Unavailable } from './parts.jsx';
+import { SunChart, sunVerdict, hm12 } from '../sun.jsx';
 
 const okv = v => v && !v.error;
+
+// Today's sun, until the solar system and the Daikin are in Home Assistant
+function Solar({ s }) {
+  if (!s) return null;
+  if (s.error) return <Area title="Sun today"><Unavailable what="The solar forecast" error={s.error} /></Area>;
+  const v = sunVerdict(s);
+  const t = s.today;
+  return (
+    <Area title="Sun today" summary={`${hm12(t.sunrise)} – ${hm12(t.sunset)} · forecast from Open-Meteo`}>
+      <article className="card solar">
+        <div className="solar-head">
+          <div className={`solar-verdict ${v.level}`}>
+            <h3>{v.title}</h3>
+            <p>{v.detail}</p>
+          </div>
+          <dl className="solar-facts">
+            <div><dt>Strong sun</dt><dd>{t.window ? `${hm12(t.window.start)}–${hm12(t.window.end)}` : 'none'}</dd></div>
+            <div><dt>Solar noon</dt><dd>{hm12(t.solarNoon)}</dd></div>
+            <div><dt>{t.estimateKwh != null ? 'Estimate' : 'Sunlight'}</dt><dd>{t.estimateKwh != null ? `${t.estimateKwh} kWh` : `${t.kwhPerM2} kWh/m²`}</dd></div>
+            <div><dt>UV peak</dt><dd>{t.uvMax}</dd></div>
+          </dl>
+        </div>
+        <SunChart s={s} />
+        {s.tomorrow && (
+          <p className="note card-foot">
+            Tomorrow: {s.tomorrow.window ? `strong ${hm12(s.tomorrow.window.start)}–${hm12(s.tomorrow.window.end)}` : 'no strong hours'} · about {s.tomorrow.cloud}% cloud
+            {s.tomorrow.estimateKwh != null ? ` · ~${s.tomorrow.estimateKwh} kWh` : ''}
+            {s.onPanel ? '' : ' · sunlight on flat ground'}
+          </p>
+        )}
+      </article>
+    </Area>
+  );
+}
 
 function Problems({ problems }) {
   if (!problems?.length) {
@@ -382,6 +417,7 @@ export default function Overview({ poll }) {
       </header>
 
       <Problems problems={data.problems} />
+      <Solar s={data.solar} />
 
       <Area title="Servers" summary={`${hostsUp} of ${data.hosts.length} online`}>
         <div className="grid3">{data.hosts.map(h => <HostCard key={h.name} h={h} />)}</div>

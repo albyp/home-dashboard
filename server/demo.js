@@ -1,5 +1,7 @@
 // Example data for DEMO=1 (local development without the homelab).
 // Shapes match the real snapshots in snapshot/*.js. All figures are made up.
+import { analyse } from './sources/solar.js';
+
 const MIN = 60000;
 const HOUR = 60 * MIN;
 const ago = ms => new Date(Date.now() - ms).toISOString();
@@ -42,7 +44,45 @@ const SERVICES = [
   ['gatus', 'tool', 'Gatus', check('Gatus', { ms: 4 })]
 ].map(([id, kind, name, c]) => ({ id, kind, name, host: id === 'adguard-home' ? 'tiny' : 'tiny', url: '#', status: c.status, check: c }));
 
-const cpuHistory = [28, 27, 24, 26, 20, 23, 12, 18, 22, 25, 21, 24, 26, 25, 22, 19, 17, 20, 23, 21, 18, 16, 14, 12]
+// A made-up Open-Meteo-shaped forecast: sunrise 6:00, sunset 7:30pm,
+// today mostly sunny, tomorrow cloudier. Fed through the real analyse().
+export function demoForecast() {
+  const offset = 10 * 3600;
+  const localDate = n => new Date(Date.now() + offset * 1000 + n * 86400000).toISOString().slice(0, 10);
+  const days = [0, 1, 2].map(localDate);
+  const peak = [960, 620, 880];
+  const cloudAt = (d, h) => [[18, 22, 30, 16], [40, 70, 55, 60], [10, 15, 20, 10]][d][Math.floor(h / 6)];
+  const hourly = { time: [], shortwave_radiation: [], cloud_cover: [], uv_index: [] };
+  days.forEach((date, d) => {
+    for (let h = 0; h < 24; h++) {
+      const mid = h - 0.5; // value at h describes the hour before
+      const x = (mid - 6) / (19.5 - 6);
+      const sun = x > 0 && x < 1 ? Math.sin(Math.PI * x) ** 1.3 : 0;
+      const dip = d === 1 && (h === 13 || h === 14) ? 0.45 : 1;
+      hourly.time.push(`${date}T${String(h).padStart(2, '0')}:00`);
+      hourly.shortwave_radiation.push(Math.round(peak[d] * sun * dip));
+      hourly.cloud_cover.push(cloudAt(d, h));
+      hourly.uv_index.push(Math.round(11 * sun * dip * 10) / 10);
+    }
+  });
+  hourly.time.push(`${localDate(3)}T00:00`);
+  hourly.shortwave_radiation.push(0);
+  hourly.cloud_cover.push(10);
+  hourly.uv_index.push(0);
+  return {
+    utc_offset_seconds: offset,
+    hourly,
+    daily: {
+      time: days,
+      sunrise: days.map(d => `${d}T06:00`),
+      sunset: days.map(d => `${d}T19:30`),
+      uv_index_max: [11, 7, 10]
+    }
+  };
+}
+const DEMO_SOLAR = { systemKw: 6.6, feedInPeak: '15:00-21:00' };
+
+const cpuHistory =[28, 27, 24, 26, 20, 23, 12, 18, 22, 25, 21, 24, 26, 25, 22, 19, 17, 20, 23, 21, 18, 16, 14, 12]
   .map(v => 40 - v);
 
 export function admin() {
@@ -139,6 +179,7 @@ export function admin() {
         { title: 'dotfiles', folder: 'projects', kind: 'updated', modified: ago(2 * HOUR) }
       ]
     },
+    solar: analyse(demoForecast(), DEMO_SOLAR),
     today: {
       streams: { streams: 2, transcoding: 1 },
       requests: { pending: 3 },
@@ -282,7 +323,8 @@ export function kiosk() {
         { name: 'New TV downloads', ok: false, note: 'Not working · Alby has been told' },
         { name: 'Internet', ok: true, note: 'OK' }
       ]
-    }
+    },
+    solar: analyse(demoForecast(), DEMO_SOLAR)
   };
 }
 

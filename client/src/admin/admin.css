@@ -302,6 +302,33 @@ a.svc:hover { color: var(--cta-ink); }
 .humi .range b { position: absolute; top: -4px; width: 4px; height: 18px; border-radius: 2px; background: var(--ink); transform: translateX(-2px); box-shadow: 0 0 0 2px var(--panel); }
 .humi .scale { display: flex; justify-content: space-between; font: 11px var(--f-mono); color: var(--muted); }
 
+/* ── Sun today ── */
+.solar-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px 28px; flex-wrap: wrap; }
+.solar-verdict { padding-left: 14px; border-left: 3px solid var(--line); max-width: 46ch; }
+.solar-verdict.good { border-color: var(--cta); }
+.solar-verdict.soon { border-color: var(--tone); }
+.solar-verdict h3 { font: 500 22px var(--f-display); letter-spacing: -0.01em; }
+.solar-verdict p { margin: 4px 0 0; color: var(--muted); }
+.solar-facts { display: grid; grid-template-columns: repeat(4, auto); gap: 4px 24px; margin: 0; }
+.solar-facts dt { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+.solar-facts dd { margin: 0; font: 500 16px var(--f-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sun-chart { margin: 0; }
+.sun-plot { position: relative; height: 136px; padding-top: 16px; display: flex; align-items: flex-end; gap: 3px; border-bottom: 1px solid var(--line); }
+.sun-col { flex: 1; height: 100%; display: flex; align-items: flex-end; position: relative; z-index: 1; cursor: crosshair; }
+.sun-col i { display: block; width: 100%; background: var(--tone-soft); border-radius: 3px 3px 0 0; }
+.sun-col.strong i { background: var(--tone); }
+.sun-col.now i { background: var(--cta); }
+.sun-col.now::after { content: "now"; position: absolute; top: -16px; left: 50%; transform: translateX(-50%); font: 600 10px var(--f-mono); color: var(--cta-ink); }
+.sun-col:hover i { filter: brightness(1.08); }
+.sun-good { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--muted); opacity: .6; pointer-events: none; }
+.sun-good span { position: absolute; right: 0; top: -16px; font: 10px var(--f-mono); color: var(--muted); }
+.sun-feedin { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(135deg, var(--sunk) 0 6px, transparent 6px 12px); border-radius: 4px 4px 0 0; pointer-events: none; }
+.sun-feedin span { position: absolute; top: 2px; left: 6px; font: 10px var(--f-mono); color: var(--muted); white-space: nowrap; }
+.sun-tip { position: absolute; bottom: calc(100% + 6px); transform: translateX(-50%); background: var(--ink); color: var(--panel); font: 12px var(--f-mono); padding: 3px 8px; border-radius: 4px; white-space: nowrap; pointer-events: none; z-index: 3; }
+.sun-axis { position: relative; height: 18px; font: 11px var(--f-mono); color: var(--muted); }
+.sun-axis span { position: absolute; top: 4px; transform: translateX(-50%); }
+.admin-root[data-theme="terminal"] .sun-col i { border-radius: 0; }
+
 /* ── Claude + vault ── */
 .usage { display: flex; flex-direction: column; gap: 6px; }
 .usage-head { display: flex; justify-content: space-between; gap: 4px 10px; flex-wrap: wrap; }
@@ -379,6 +406,8 @@ a.svc:hover { color: var(--cta-ink); }
   .main { padding: 22px max(16px, env(safe-area-inset-right, 0px)) 40px max(16px, env(safe-area-inset-left, 0px)); }
   .view { gap: 26px; }
   .topbar h1 { font-size: 26px; }
+  .solar-facts { grid-template-columns: repeat(2, auto); width: 100%; }
+  .sun-plot { gap: 2px; height: 100px; }
 }
 
 @media (max-width: 640px) {

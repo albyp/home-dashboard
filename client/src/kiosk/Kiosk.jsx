@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePoll, kioskAction } from '../api.js';
 import { Icon, WeatherIcon, Bin } from './icons.jsx';
+import { SunChart, sunVerdict, hm12 } from '../sun.jsx';
 import '@fontsource/figtree/400.css';
 import '@fontsource/figtree/500.css';
 import '@fontsource/figtree/600.css';
@@ -191,6 +192,22 @@ function Bins({ bins }) {
         <h2>{main.name}</h2>
         {rest.length > 0 && <p className="k-hint">and {rest.map(s => s.name.toLowerCase()).join(', ')}</p>}
       </div>
+    </article>
+  );
+}
+
+// When to run the aircon and big loads, from today's sun forecast
+function Sun({ solar }) {
+  if (!okv(solar)) return null;
+  const v = sunVerdict(solar);
+  return (
+    <article className={`k-card k-sun ${v.level}`}>
+      <div className="k-eyebrow">Sun today · {hm12(solar.today.sunrise)} – {hm12(solar.today.sunset)}</div>
+      <div>
+        <h2>{v.title}</h2>
+        <p className="k-hint">{v.detail}</p>
+      </div>
+      <SunChart s={solar} hover={false} />
     </article>
   );
 }
@@ -416,6 +433,7 @@ export default function Kiosk() {
                 <Agenda events={data.calendar} />
                 <Tasks lists={data.tasks} reload={reload} />
                 <div className="k-stack">
+                  <Sun solar={data.solar} />
                   <Bins bins={data.bins} />
                   <People people={data.people} />
                   <Dinner dinner={data.dinner} />

@@ -144,6 +144,13 @@ sources:
     # Open-Meteo, no key needed
     latitude: ${HOME_LAT}
     longitude: ${HOME_LON}
+  solar:
+    # Sun today uses the weather location. All optional; set them in .env.
+    goodWatts: ${SOLAR_GOOD_WATTS:-500}   # sunlight (W/m²) that counts as "strong"
+    systemKw: ${SOLAR_KW:-}               # panel size, adds a rough kWh estimate
+    tilt: ${SOLAR_TILT:-}                 # panel angle; with azimuth, uses sunlight on the panel
+    azimuth: ${SOLAR_AZIMUTH:-}           # Open-Meteo: 0 = facing south, 180 = facing north
+    feedInPeak: ${SOLAR_FEEDIN_PEAK:-}    # higher feed-in rate, e.g. 15:00-21:00; shaded on the chart
 
 # ---------------------------------------------------------------------------
 # Repos: local clones (mounted read-only) compared with GitHub.

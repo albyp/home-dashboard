@@ -11,6 +11,7 @@ import { humidors } from '../sources/homeassistant.js';
 import { betbot } from '../sources/betbot.js';
 import { claudeUsage } from '../sources/claude.js';
 import { vaultToday } from '../sources/vault.js';
+import { solar } from '../sources/solar.js';
 
 const ok = v => v && !v.error;
 const RANK = { bad: 3, warn: 2, unknown: 1, ok: 0 };
@@ -104,7 +105,7 @@ function problems(config, d) {
 export async function adminSnapshot() {
   const config = loadConfig();
   const ts = await getTailscale(config);
-  const [gatus, hosts, syncthing, repos, ag, net, sessions, added, requests, hum, bb, claude, vault] = await Promise.all([
+  const [gatus, hosts, syncthing, repos, ag, net, sessions, added, requests, hum, bb, claude, vault, sun] = await Promise.all([
     getGatus(config),
     Promise.all(config.hosts.map(h => hostTile(config, h, ts))),
     getSyncthing(config),
@@ -117,7 +118,8 @@ export async function adminSnapshot() {
     humidors(config),
     betbot(config),
     claudeUsage(config),
-    vaultToday(config)
+    vaultToday(config),
+    solar(config)
   ]);
 
   const services = allServices(config).map(svc => {
@@ -162,6 +164,7 @@ export async function adminSnapshot() {
     home: { humidors: hum, betbot: bb },
     claude,
     vault,
+    solar: sun,
     today: {
       streams: ok(sessions) ? sessions : null,
       requests: ok(requests) ? { pending: requests.pending } : null,
