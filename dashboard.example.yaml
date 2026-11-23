@@ -81,9 +81,11 @@ tools:
     host: tiny
     url: https://tiny.${TAILNET}:8080
     container: qbittorrent
+    type: qbittorrent        # page shows the VPN (sources.vpn) and transfers
   - name: Syncthing
     host: tiny
     url: https://tiny.${TAILNET}:8384
+    type: syncthing          # page shows devices, who is behind, every folder
   - name: Gatus
     host: tiny
     url: https://tiny.${TAILNET}:8090
@@ -121,6 +123,18 @@ sources:
   radarr:
     url: http://127.0.0.1:7878
     key: ${RADARR_API_KEY}
+  qbittorrent:
+    url: http://127.0.0.1:8080
+    user: ${QBIT_USER}
+    password: ${QBIT_PASSWORD}
+  vpn:
+    # gluetun's control API with a read-only role for GET /v1/publicip/ip and
+    # GET /v1/vpn/status (gluetun /gluetun/auth/config.toml, auth = "apikey").
+    # Raises a problem if the tunnel is down or the exit IP is the home IP.
+    url: http://127.0.0.1:8000
+    key: ${GLUETUN_API_KEY}
+    host: tiny               # machine it runs on (skipped while that machine sleeps)
+    provider: VPN
   tandoor:
     url: http://127.0.0.1:8081
     token: ${TANDOOR_TOKEN}

@@ -6,7 +6,7 @@ import { getContainers } from '../sources/docker.js';
 import { getTailscale } from '../sources/tailscale.js';
 import { getSyncthing } from '../sources/syncthing.js';
 import { getRepos } from '../sources/repos.js';
-import { adguard, internet, jellyfinSessions, jellyfinAddedThisWeek, seerrRequests, arrDetails } from '../sources/apps.js';
+import { adguard, internet, jellyfinSessions, jellyfinAddedThisWeek, seerrRequests, arrDetails, qbittorrent, vpn } from '../sources/apps.js';
 import { humidors } from '../sources/homeassistant.js';
 import { betbot } from '../sources/betbot.js';
 import { claudeUsage } from '../sources/claude.js';
@@ -94,7 +94,18 @@ function problems(config, d) {
     if (flagged.length) add('warn', `${flagged[0].name}: ${flagged[0].state.toLowerCase()}`, flagged.slice(1).map(r => `${r.name}: ${r.state.toLowerCase()}`).join(' · ') || 'repos', null);
   }
   if (ok(d.syncthing)) {
-    for (const f of d.syncthing.folders) if (f.level !== 'ok') add(f.level, `Syncthing "${f.label}": ${f.state}`, f.devices.join(' · '), f.lastChange);
+    for (const f of d.syncthing.folders) if (f.level !== 'ok') add(f.level, `Syncthing "${f.label}": ${f.state}`, f.devices.join(' · '), f.lastChange, '/s/syncthing');
+    for (const p of d.syncthing.pending || []) {
+      add('warn', p.kind === 'device' ? `Syncthing: ${p.name} wants to connect` : `Syncthing: ${p.from} offers folder "${p.name}"`,
+        'not accepted yet', p.at, '/s/syncthing');
+    }
+  }
+  // The torrent VPN: skipped while its machine is asleep (the client is off too)
+  const v = d.network.vpn;
+  if (v && !v.asleep) {
+    if (v.error) add('warn', 'Torrent VPN not reachable', v.error, null, v.link);
+    else if (v.leak) add('bad', 'Torrents are NOT on the VPN', `exit IP ${v.exitIp} is the home connection`, null, v.link);
+    else if (!v.running) add('bad', 'Torrent VPN is down', 'torrents have no network until it reconnects (kill switch)', null, v.link);
   }
   if (ok(d.home.humidors)) {
     for (const h of d.home.humidors.humidors) if (h.status.level !== 'ok') add(h.status.level, `Humidor ${h.name}: ${h.status.label}`, `${h.humidity}% · ${h.temperature} °C`, h.updated);
@@ -105,7 +116,7 @@ function problems(config, d) {
 export async function adminSnapshot() {
   const config = loadConfig();
   const ts = await getTailscale(config);
-  const [gatus, hosts, syncthing, repos, ag, net, sessions, added, requests, hum, bb, claude, vault, sun] = await Promise.all([
+  const [gatus, hosts, syncthing, repos, ag, net, sessions, added, requests, hum, bb, claude, vault, sun, tunnel] = await Promise.all([
     getGatus(config),
     Promise.all(config.hosts.map(h => hostTile(config, h, ts))),
     getSyncthing(config),
@@ -119,8 +130,16 @@ export async function adminSnapshot() {
     betbot(config),
     claudeUsage(config),
     vaultToday(config),
-    solar(config)
+    solar(config),
+    vpn(config)
   ]);
+  const vpnHost = hosts.find(h => h.name === config.sources.vpn?.host);
+  const vpnSvc = allServices(config).find(s => s.type === 'qbittorrent');
+  const vpnInfo = tunnel ? {
+    ...(ok(tunnel) ? tunnel : { error: tunnel.error }),
+    asleep: !!(vpnHost?.sleeps && vpnHost.online === false),
+    link: vpnSvc ? `/s/${vpnSvc.id}` : null
+  } : null;
 
   const services = allServices(config).map(svc => {
     const { status, check } = serviceStatus(svc, gatus, hosts);
@@ -148,7 +167,8 @@ export async function adminSnapshot() {
     network: {
       internet: ok(net) ? net : null,
       adguard: ok(ag) ? ag : ag ? { error: ag.error } : null,
-      tailscale: ok(ts) ? { online: ts.online, total: ts.total, exitNodes: ts.exitNodes } : null
+      tailscale: ok(ts) ? { online: ts.online, total: ts.total, exitNodes: ts.exitNodes } : null,
+      vpn: vpnInfo
     },
     storage: { disks, backup: backupCheck || null },
     health,
@@ -186,6 +206,91 @@ export async function adminSnapshot() {
   };
 }
 
+// "3 h ago" style, for last-seen times
+function ago(iso) {
+  if (!iso) return 'never';
+  const m = Math.round((Date.now() - Date.parse(iso)) / 60000);
+  if (m < 60) return `${Math.max(m, 1)} min ago`;
+  if (m < 48 * 60) return `${Math.round(m / 60)} h ago`;
+  return `${Math.round(m / 1440)} days ago`;
+}
+const size = b => (b >= 2 ** 30 ? `${(b / 2 ** 30).toFixed(1)} GB` : b >= 2 ** 20 ? `${Math.round(b / 2 ** 20)} MB` : `${Math.max(1, Math.round((b || 0) / 1024))} KB`);
+const speed = b => (b >= 2 ** 20 ? `${(b / 2 ** 20).toFixed(1)} MB/s` : `${Math.round((b || 0) / 1024)} KB/s`);
+
+// Syncthing page: who is online, who is behind, every folder per device, and
+// anything offered that nobody accepted yet
+function syncthingExtras(s, ts) {
+  if (!ok(s)) return [{ title: 'Syncthing', rows: [], empty: s?.error || 'Not configured' }];
+  // A "sleepy" machine that is actually awake on Tailscale but not in Syncthing:
+  // its Syncthing isn't running, which is worth knowing
+  const awake = name => ok(ts) && ts.nodes?.some(n => n.online && n.name === hostOf(name));
+  const hostOf = name => (s.hostNames?.[name] || name).toLowerCase();
+  const seen = t => (t ? `seen ${ago(t)}` : 'never connected');
+  const deviceRow = d => {
+    const behind = d.behind.length ? ` · behind in ${d.behind.length} folder${d.behind.length > 1 ? 's' : ''}` : '';
+    if (d.connected) return { label: d.name, value: `online${behind}`, level: d.behind.length ? 'warn' : 'ok' };
+    if (d.asleep && awake(d.name)) return { label: d.name, value: `machine is on, Syncthing isn't running · ${seen(d.lastSeen)}`, level: 'warn' };
+    if (d.asleep) return { label: d.name, value: `asleep · ${seen(d.lastSeen)}${behind}`, level: 'off' };
+    return { label: d.name, value: `offline · ${seen(d.lastSeen)}${behind}`, level: d.stale ? 'warn' : 'off' };
+  };
+  const peerRow = p => {
+    const pct = p.completion != null && p.completion < 100 ? `${p.completion}% · ${size(p.needBytes)} behind` : 'up to date';
+    if (p.connected) return { label: p.name, value: pct, level: pct === 'up to date' ? 'ok' : 'warn' };
+    if (!p.lastSeen) return { label: p.name, value: 'never connected to this machine', level: 'warn' };
+    const was = p.completion != null ? (p.completion < 100 ? `, was ${p.completion}%` : ', was up to date') : '';
+    const sleeping = p.asleep && !awake(p.name);
+    return { label: p.name, value: `${sleeping ? 'asleep' : 'offline'} · ${seen(p.lastSeen)}${was}`, level: sleeping || p.away ? 'off' : 'warn' };
+  };
+  return [
+    { title: `Devices · ${s.devicesOnline} of ${s.devicesTotal} online`, rows: s.devices.map(deviceRow), empty: 'No other devices' },
+    ...(s.pending?.length ? [{
+      title: 'Waiting to be accepted',
+      rows: s.pending.map(p => ({ label: p.kind === 'device' ? `Device ${p.name}` : `Folder "${p.name}" from ${p.from}`, value: ago(p.at), level: 'warn' })),
+      empty: ''
+    }] : []),
+    ...s.folders.map(f => ({
+      title: `${f.label} · ${f.state}`,
+      rows: f.peers.map(peerRow),
+      empty: 'Not shared with any other device'
+    }))
+  ];
+}
+
+// qBittorrent page: the VPN it runs behind, and what it is doing
+async function torrentExtras(config) {
+  const [t, v] = await Promise.all([qbittorrent(config), vpn(config)]);
+  const out = [];
+  if (v) {
+    out.push(ok(v) ? {
+      title: 'VPN (kill switch)',
+      rows: [
+        { label: 'Tunnel', value: v.running ? 'up' : 'down: torrents have no network', level: v.running ? 'ok' : 'bad' },
+        { label: 'Exit', value: [v.city, v.country].filter(Boolean).join(', ') || '—', level: v.leak ? 'bad' : 'ok' },
+        { label: 'Exit IP', value: v.exitIp || '—' },
+        { label: 'Network', value: [v.provider, v.org].filter(Boolean).join(' · ') || '—' },
+        { label: 'Home IP hidden', value: !v.homeChecked ? 'could not check' : v.leak ? 'NO: traffic leaves from home' : 'yes', level: !v.homeChecked ? 'unknown' : v.leak ? 'bad' : 'ok' }
+      ],
+      empty: ''
+    } : { title: 'VPN (kill switch)', rows: [], empty: `Not reachable: ${v.error}` });
+  }
+  if (t) {
+    out.push(ok(t) ? {
+      title: 'Transfers',
+      rows: [
+        { label: 'Connection', value: t.connection, level: t.connection === 'disconnected' ? 'bad' : t.connection === 'firewalled' ? 'warn' : 'ok' },
+        { label: 'Down / up', value: `${speed(t.downSpeed)} / ${speed(t.upSpeed)}` },
+        { label: 'Downloading', value: String(t.downloading) },
+        { label: 'Seeding', value: String(t.seeding) },
+        { label: 'Active now', value: String(t.active) },
+        ...(t.errored ? [{ label: 'Errors', value: `${t.errored} (missing files or errored)`, level: 'bad' }] : []),
+        { label: 'DHT nodes', value: String(t.dhtNodes) }
+      ],
+      empty: ''
+    } : { title: 'Transfers', rows: [], empty: `Not reachable: ${t.error}` });
+  }
+  return out.length ? out : null;
+}
+
 export async function serviceSnapshot(id) {
   const config = loadConfig();
   const svc = allServices(config).find(s => s.id === id);
@@ -210,6 +315,13 @@ export async function serviceSnapshot(id) {
         { title: 'Most blocked', rows: a.topBlocked.map(c => ({ label: c.name, value: c.count.toLocaleString('en-AU') })), empty: 'Nothing blocked' }
       ];
     }
+    if (svc.type === 'syncthing') {
+      const [s, ts] = await Promise.all([getSyncthing(config), getTailscale(config)]);
+      // Syncthing device name -> Tailscale name, from the hosts list (rocky -> rocky-1)
+      if (ok(s)) s.hostNames = Object.fromEntries(config.hosts.map(h => [h.name, h.tailscale || h.name]));
+      extras = syncthingExtras(s, ts);
+    }
+    if (svc.type === 'qbittorrent') extras = await torrentExtras(config);
     if (svc.type === 'jellyfin') {
       const j = await jellyfinSessions(config);
       if (ok(j)) extras = [{ title: 'Watching now', rows: j.items.map(i => ({ label: i.title, value: i.device })), empty: 'Nobody is watching' }];

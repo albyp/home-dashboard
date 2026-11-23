@@ -176,6 +176,7 @@
 .mockflag { font-size: 12px; color: var(--cta-ink); border: 1px dashed currentColor; padding: 1px 8px; border-radius: 99px; }
 .pos { color: var(--ok-ink); }
 .neg { color: var(--bad-ink); }
+.muted { color: var(--muted); }
 .note { color: var(--muted); font-size: 12px; margin: 0; }
 .cta-link { color: var(--cta-ink); font-weight: 500; }
 .cta-link:hover { text-decoration: underline; text-underline-offset: 3px; }
@@ -352,6 +353,11 @@ a.svc:hover { color: var(--cta-ink); }
 .queue li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); }
 .queue li:first-child { border-top: 0; }
 .queue li span:last-child { color: var(--muted); font: 12px var(--f-mono); white-space: nowrap; }
+.queue li span.neg:last-child { color: var(--bad-ink); }
+.queue .q-label { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+@media (max-width: 820px) {
+  .queue li span:last-child { white-space: normal; text-align: right; }
+}
 .btn { display: inline-flex; align-items: center; gap: 6px; border: 0; background: var(--cta); color: var(--on-cta); padding: 7px 14px; border-radius: var(--radius); font-weight: 600; font-size: 13px; }
 .btn:hover { filter: brightness(1.06); }
 

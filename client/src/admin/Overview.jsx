@@ -103,6 +103,15 @@ function Network({ net }) {
     if (net.adguard.topClient) rows.push(['Busiest client', net.adguard.topClient]);
   } else if (net.adguard?.error) rows.push(['AdGuard', <span className="neg">not reachable</span>]);
   if (net.tailscale?.exitNodes?.length) rows.push(['Exit node', net.tailscale.exitNodes.join(', ')]);
+  const v = net.vpn;
+  if (v) {
+    const where = [v.city, v.provider].filter(Boolean).join(' · ');
+    rows.push(['Torrent VPN', v.asleep ? <span className="muted">off (rocky asleep)</span>
+      : v.error ? <span className="neg">not reachable</span>
+        : v.leak ? <span className="neg">LEAK: home IP</span>
+          : v.running ? <><span className="pos">on</span>{where && ` · ${where}`}</>
+            : <span className="neg">down (torrents paused)</span>]);
+  }
   const ag = okv(net.adguard) ? net.adguard : null;
   const ts = net.tailscale;
   if (!rows.length && !ts) return null;

@@ -186,7 +186,57 @@ export function qbittorrent(config) {
       const cookie = res.headers.get('set-cookie')?.split(';')[0];
       if (cookie) headers.Cookie = cookie;
     }
-    const torrents = await get(`${base}/api/v2/torrents/info?filter=active`, { headers });
-    return { active: torrents.length };
+    const [torrents, transfer] = await Promise.all([
+      get(`${base}/api/v2/torrents/info`, { headers }),
+      get(`${base}/api/v2/transfer/info`, { headers })
+    ]);
+    const count = states => torrents.filter(t => states.includes(t.state)).length;
+    return {
+      connection: transfer.connection_status,   // connected / firewalled / disconnected
+      dhtNodes: transfer.dht_nodes,
+      downSpeed: transfer.dl_info_speed,
+      upSpeed: transfer.up_info_speed,
+      total: torrents.length,
+      active: torrents.filter(t => t.dlspeed > 0 || t.upspeed > 0).length,
+      downloading: count(['downloading', 'stalledDL', 'metaDL', 'forcedDL', 'queuedDL', 'checkingDL']),
+      seeding: count(['uploading', 'stalledUP', 'forcedUP', 'queuedUP', 'checkingUP']),
+      paused: count(['pausedUP', 'pausedDL', 'stoppedUP', 'stoppedDL']),
+      errored: count(['error', 'missingFiles'])
+    };
   });
+}
+
+// The torrent VPN (gluetun's control API, read-only role): is it up, where does
+// traffic leave, and is that really not the home connection?
+export function vpn(config) {
+  const src = config.sources.vpn;
+  if (!src?.url || !src.key) return null;
+  return cached('vpn', async () => {
+    const headers = { 'X-API-Key': src.key };
+    const base = trim(src.url);
+    const [status, ip, home] = await Promise.all([
+      get(`${base}/v1/vpn/status`, { headers, timeout: 4000 }),
+      get(`${base}/v1/publicip/ip`, { headers, timeout: 4000 }),
+      homeIp()
+    ]);
+    const exitIp = ip.public_ip || null;
+    return {
+      provider: src.provider || null,
+      running: status.status === 'running',
+      exitIp,
+      city: ip.city || null,
+      country: ip.country || null,
+      org: (ip.organization || '').replace(/^AS\d+\s+/, '') || null,
+      // Torrent traffic leaving from the home IP would be a leak
+      leak: !!(exitIp && home && exitIp === home),
+      homeChecked: !!home
+    };
+  }, 60 * 1000);
+}
+
+// This machine's own public IP (the home connection), cached for 10 minutes
+function homeIp() {
+  return cached('home-ip', async () => (await get('https://ipinfo.io/json', { timeout: 4000 })).ip || null, 10 * 60 * 1000)
+    .then(v => (v && !v.error ? v : null))
+    .catch(() => null);
 }

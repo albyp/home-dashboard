@@ -110,7 +110,8 @@ export function admin() {
     network: {
       internet: { up: true, latencyMs: 9 },
       adguard: { queries: 18402, blockedPercent: 21.4, topClient: 'living-room-tv' },
-      tailscale: { online: 5, total: 7, exitNodes: ['raspi'] }
+      tailscale: { online: 5, total: 7, exitNodes: ['raspi'] },
+      vpn: { provider: 'VPN', running: true, exitIp: '203.0.113.40', city: 'Sydney', country: 'Australia', org: 'Example Hosting', leak: false, homeChecked: true, asleep: false, link: '/s/qbittorrent' }
     },
     storage: {
       disks: [
@@ -196,6 +197,34 @@ export function service(id) {
     sonarr: [
       { title: 'Queue', rows: [{ label: 'The Coastline · S2 E5', value: 'downloading 64%' }, { label: 'Night Kitchen · S1 E8', value: 'queued' }, { label: 'Harbour Patrol · S4 E1', value: 'importing' }], empty: 'Nothing in the queue' },
       { title: 'Airing soon', rows: [{ label: 'Night Kitchen · S1 E9', value: 'Mon 8:30 pm' }, { label: 'The Coastline · S2 E6', value: 'Wed 7:00 pm' }], empty: 'Nothing in the next 7 days' }
+    ],
+    syncthing: [
+      { title: 'Devices · 3 of 5 online', rows: [
+        { label: 'laptop', value: 'online', level: 'ok' },
+        { label: 'nas', value: 'online · behind in 1 folder', level: 'warn' },
+        { label: 'desktop', value: 'asleep · seen 7 h ago', level: 'off' },
+        { label: 'phone', value: 'offline · seen 3 days ago', level: 'warn' }
+      ], empty: 'No other devices' },
+      { title: 'Notes · up to date · desktop offline', rows: [
+        { label: 'laptop', value: 'up to date', level: 'ok' },
+        { label: 'desktop', value: 'asleep · seen 7 h ago, was up to date', level: 'off' },
+        { label: 'phone', value: 'offline · seen 3 days ago, was 96.4%', level: 'warn' }
+      ], empty: '' },
+      { title: 'Photos · syncing', rows: [{ label: 'nas', value: '82.5% · 1.4 GB behind', level: 'warn' }], empty: '' }
+    ],
+    qbittorrent: [
+      { title: 'VPN (kill switch)', rows: [
+        { label: 'Tunnel', value: 'up', level: 'ok' },
+        { label: 'Exit', value: 'Sydney, Australia', level: 'ok' },
+        { label: 'Exit IP', value: '203.0.113.40' },
+        { label: 'Home IP hidden', value: 'yes', level: 'ok' }
+      ], empty: '' },
+      { title: 'Transfers', rows: [
+        { label: 'Connection', value: 'connected', level: 'ok' },
+        { label: 'Down / up', value: '2.4 MB/s / 310 KB/s' },
+        { label: 'Downloading', value: '2' },
+        { label: 'Seeding', value: '31' }
+      ], empty: '' }
     ],
     'adguard-home': [
       { title: 'Top clients', rows: [{ label: 'living-room-tv', value: '4,812' }, { label: 'iphone181', value: '3,105' }, { label: 'rocky', value: '2,644' }], empty: 'No queries' },

@@ -65,7 +65,12 @@ export default function Service({ id }) {
             <article className="card" key={x.title}>
               <div className="card-head"><h3>{x.title}</h3></div>
               {x.rows.length ? (
-                <ul className="queue">{x.rows.map((r, i) => <li key={i}><span>{r.label}</span><span>{r.value}</span></li>)}</ul>
+                <ul className="queue">{x.rows.map((r, i) => (
+                  <li key={i}>
+                    <span className="q-label">{r.level && <Dot status={r.level} label={`${r.label}: ${r.value}`} />}{r.label}</span>
+                    <span className={r.level === 'bad' ? 'neg' : undefined}>{r.value}</span>
+                  </li>
+                ))}</ul>
               ) : <p className="note">{x.empty}</p>}
             </article>
           ))}
