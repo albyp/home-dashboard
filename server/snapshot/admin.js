@@ -12,6 +12,7 @@ import { betbot } from '../sources/betbot.js';
 import { claudeUsage } from '../sources/claude.js';
 import { vaultToday } from '../sources/vault.js';
 import { solar } from '../sources/solar.js';
+import { getRestic } from '../sources/restic.js';
 
 const ok = v => v && !v.error;
 const RANK = { bad: 3, warn: 2, unknown: 1, ok: 0 };
@@ -100,6 +101,14 @@ function problems(config, d) {
         'not accepted yet', p.at, '/s/syncthing');
     }
   }
+  // Backups of other machines (this host's own run is already a host-agent check)
+  if (ok(d.restic)) {
+    for (const h of d.restic.hosts) {
+      if (h.host === config.host || h.level === 'ok') continue;
+      add(h.level, `Backup of ${h.host} is ${h.latest ? 'late' : 'missing'}`,
+        h.latest ? `newest snapshot ${Math.round(h.ageHours)} h old (limit ${h.limitHours} h)` : 'no snapshot in the repository', h.latest?.time || null, '/s/backups');
+    }
+  }
   // The torrent VPN: skipped while its machine is asleep (the client is off too)
   const v = d.network.vpn;
   if (v && !v.asleep) {
@@ -181,6 +190,7 @@ export async function adminSnapshot() {
         ...checks.filter(c => !services.some(s => s.check?.key === c.key)).map(c => ({ ...c, serviceId: null, host: null, display: c.name }))
       ]
       : gatus,
+    restic: getRestic(config),
     home: { humidors: hum, betbot: bb },
     claude,
     vault,
@@ -256,6 +266,50 @@ function syncthingExtras(s, ts) {
   ];
 }
 
+// Backups page: newest snapshot per machine, the repository, recent snapshots
+function resticExtras(r) {
+  if (!r) return [{ title: 'Backups', rows: [], empty: 'Not configured (sources.restic)' }];
+  if (r.error) return [{ title: 'Backups', rows: [], empty: r.error }];
+  const when = iso => new Date(iso).toLocaleString('en-AU', {
+    weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', timeZone: process.env.TZ || 'Australia/Perth'
+  });
+  const res = x => (x ? { value: `${x.ok ? 'OK' : 'FAILED'} · ${ago(x.at)}${x.added && x.ok ? ` · ${x.added}` : ''}`, level: x.ok ? 'ok' : 'bad' } : { value: 'not run yet', level: 'unknown' });
+  return [
+    {
+      title: 'Machines',
+      rows: r.hosts.map(h => ({
+        label: h.host,
+        value: h.latest
+          ? `${ago(h.latest.time)} · ${size(h.latest.addedStored ?? h.latest.added ?? 0)} new · ${h.count} snapshot${h.count === 1 ? '' : 's'}`
+          : 'no snapshot yet',
+        level: h.level
+      })),
+      empty: 'No snapshots yet'
+    },
+    {
+      title: 'Repository · rocky F:\\backup',
+      rows: [
+        ...(r.repo ? [
+          { label: 'Stored size', value: `${size(r.repo.storedBytes)} (${size(r.repo.rawBytes)} before compression)` },
+          { label: 'Snapshots', value: String(r.repo.snapshots) }
+        ] : []),
+        { label: 'Last run (this host)', ...res(r.lastRun) },
+        { label: 'Integrity check', ...res(r.check) },
+        { label: 'Status read', value: r.readAt ? ago(r.readAt) : 'never' }
+      ],
+      empty: ''
+    },
+    {
+      title: 'Recent snapshots',
+      rows: r.snapshots.map(s => ({
+        label: `${when(s.time)} · ${s.host}`,
+        value: `${size(s.addedStored ?? s.added ?? 0)} new · ${(s.files ?? 0).toLocaleString('en-AU')} files`
+      })),
+      empty: 'None yet'
+    }
+  ];
+}
+
 // qBittorrent page: the VPN it runs behind, and what it is doing
 async function torrentExtras(config) {
   const [t, v] = await Promise.all([qbittorrent(config), vpn(config)]);
@@ -322,6 +376,7 @@ export async function serviceSnapshot(id) {
       extras = syncthingExtras(s, ts);
     }
     if (svc.type === 'qbittorrent') extras = await torrentExtras(config);
+    if (svc.type === 'restic') extras = resticExtras(getRestic(config));
     if (svc.type === 'jellyfin') {
       const j = await jellyfinSessions(config);
       if (ok(j)) extras = [{ title: 'Watching now', rows: j.items.map(i => ({ label: i.title, value: i.device })), empty: 'Nobody is watching' }];

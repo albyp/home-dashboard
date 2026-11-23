@@ -61,6 +61,8 @@ services:
       - ${SYNCTHING_CONFIG_DIR:-/home/alby/.local/state/syncthing}:/syncthing:ro
       # This host's agent output (host-agent/health-check.sh)
       - /var/lib/home-dashboard:/agent:ro
+      # Backup status written by homelab stacks/backup/backup.sh (Backups page)
+      - /var/lib/restic:/restic:ro
       # Repos to compare with GitHub (read-only)
       - ${REPOS_DIR:-/home/alby/LocalGit}:/repos:ro
       # Vault for the "today" card (read-only)
