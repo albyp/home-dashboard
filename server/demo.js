@@ -1,10 +1,34 @@
 // Example data for DEMO=1 (local development without the homelab).
 // Shapes match the real snapshots in snapshot/*.js. All figures are made up.
 import { analyse } from './sources/solar.js';
+import { hangarExtras } from './sources/hangar.js';
 
 const MIN = 60000;
 const HOUR = 60 * MIN;
 const ago = ms => new Date(Date.now() - ms).toISOString();
+const localMinute = ms => new Date(Date.now() - ms + 8 * HOUR).toISOString().slice(0, 16);
+
+// Voice notes (Hangar): made-up counts in the status.json shape
+function demoHangar() {
+  return {
+    updated: ago(12000),
+    mode: 'benchmark',
+    recordings: { total: 14, audio_minutes: 23.6, latest: localMinute(40 * MIN) },
+    workers: [
+      { name: 'tiny', queued: 0, running: 1, done: 13, failed: 0, current: 'summarise · 2 min note', last_finished: ago(6 * MIN), last_error: null },
+      { name: 'rocky', queued: 3, running: 0, done: 11, failed: 0, current: null, last_finished: ago(14 * HOUR), last_error: null }
+    ],
+    outputs: { transcripts: { ok: 24, failed: 0 }, summaries: { ok: 22, failed: 0 } },
+    rocky: { state: 'busy', reasons: ['steam app 730'], since: ago(50 * MIN) },
+    recent: [
+      { recorded: localMinute(40 * MIN), duration_s: 128, runs: { tiny: 'running', rocky: 'queued' } },
+      { recorded: localMinute(5 * HOUR), duration_s: 41, runs: { tiny: 'done', rocky: 'queued' } },
+      { recorded: localMinute(26 * HOUR), duration_s: 315, runs: { tiny: 'done', rocky: 'done' } },
+      { recorded: localMinute(30 * HOUR), duration_s: 9, runs: { tiny: 'done', rocky: 'done' } }
+    ],
+    issues: []
+  };
+}
 const GB = 1024 ** 3;
 
 function ticks(down = [], slow = []) {
@@ -41,6 +65,7 @@ const SERVICES = [
   ['prowlarr', 'tool', 'Prowlarr', check('Prowlarr', { ms: 33 })],
   ['qbittorrent', 'tool', 'qBittorrent', check('qBittorrent', { ms: 44, uptime: 0.996, down: [12] })],
   ['syncthing', 'tool', 'Syncthing', check('Syncthing', { ms: 9 })],
+  ['hangar', 'tool', 'Hangar', check('Hangar', { ms: 3 })],
   ['gatus', 'tool', 'Gatus', check('Gatus', { ms: 4 })]
 ].map(([id, kind, name, c]) => ({ id, kind, name, host: id === 'adguard-home' ? 'tiny' : 'tiny', url: '#', status: c.status, check: c }));
 
@@ -181,6 +206,7 @@ export function admin() {
       ]
     },
     solar: analyse(demoForecast(), DEMO_SOLAR),
+    hangar: demoHangar(),
     today: {
       streams: { streams: 2, transcoding: 1 },
       requests: { pending: 3 },
@@ -198,6 +224,7 @@ export function service(id) {
       { title: 'Queue', rows: [{ label: 'The Coastline · S2 E5', value: 'downloading 64%' }, { label: 'Night Kitchen · S1 E8', value: 'queued' }, { label: 'Harbour Patrol · S4 E1', value: 'importing' }], empty: 'Nothing in the queue' },
       { title: 'Airing soon', rows: [{ label: 'Night Kitchen · S1 E9', value: 'Mon 8:30 pm' }, { label: 'The Coastline · S2 E6', value: 'Wed 7:00 pm' }], empty: 'Nothing in the next 7 days' }
     ],
+    hangar: hangarExtras(demoHangar()),
     syncthing: [
       { title: 'Devices · 3 of 5 online', rows: [
         { label: 'laptop', value: 'online', level: 'ok' },

@@ -3,6 +3,7 @@ import { adminSnapshot, serviceSnapshot } from '../snapshot/admin.js';
 import { kioskSnapshot } from '../snapshot/kiosk.js';
 import { runAction, BadAction, RefusedError } from '../snapshot/actions.js';
 import { jellyfinImage } from '../sources/apps.js';
+import { hangar } from '../sources/hangar.js';
 import { loadConfig, isDemo } from '../config.js';
 import * as demo from '../demo.js';
 
@@ -15,6 +16,15 @@ const wrap = fn => (req, res) => fn(req, res).catch(error => {
 });
 
 router.get('/health', (req, res) => res.json({ ok: true }));
+
+// For Gatus, so its alerts agree with the page: 200 when Hangar is fine, 503
+// with only the problem titles otherwise (no counts, no recordings).
+router.get('/health/hangar', wrap(async (req, res) => {
+  const h = isDemo() ? null : await hangar(loadConfig());
+  if (!h) return res.status(404).json({ ok: false, issues: ['Hangar is not configured'] });
+  const issues = h.error ? ['Hangar status not readable'] : h.issues.map(i => i.title);
+  res.status(issues.length ? 503 : 200).json({ ok: !issues.length, issues });
+}));
 
 router.get('/overview', wrap(async (req, res) => {
   res.json(isDemo() ? demo.admin() : await adminSnapshot());

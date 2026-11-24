@@ -352,6 +352,58 @@ function ClaudeCard({ c }) {
   );
 }
 
+// Hangar: the voice-note pipeline (transcribe + summarise on tiny and rocky)
+const RUN = { done: 'ok', running: 'warn', queued: 'off', failed: 'bad' };
+const shortTime = s => (s ? new Date(s).toLocaleString('en-AU', { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : '—');
+function HangarCard({ h }) {
+  if (!h) return null;
+  if (h.error) return <Area title="Hangar"><article className="card"><Unavailable what="Hangar" error={h.error} /></article></Area>;
+  const rec = h.recordings || {};
+  const rocky = h.rocky;
+  return (
+    <Area title="Hangar" summary={`voice notes · ${h.updated ? `updated ${ago(h.updated)}` : 'no status'}`}>
+      <article className="card hangar">
+        <div className="hangar-head">
+          <div className="hangar-stat"><b>{rec.total ?? 0}</b><small>voice notes</small></div>
+          <div className="hangar-stat"><b>{rec.audio_minutes ?? 0}</b><small>minutes of audio</small></div>
+          <div className="hangar-stat"><b>{shortTime(rec.latest)}</b><small>latest recording</small></div>
+          {h.mode && <Chip level={h.mode === 'production' ? 'ok' : 'warn'}>{h.mode}</Chip>}
+        </div>
+        <ul className="rows">
+          {h.workers.map(w => (
+            <li key={w.name}>
+              <Dot status={w.failed ? 'bad' : w.running ? 'warn' : 'ok'} label={`${w.name}: ${w.running ? 'working' : w.failed ? 'failures' : 'idle'}`} />
+              <div>
+                <b>{w.name}</b>
+                <small>
+                  {w.queued} queued · {w.running} running · {w.done} done{w.failed ? ` · ${w.failed} failed` : ''}
+                  {w.current ? ` · now: ${w.current}` : ''}
+                  {w.name === 'rocky' && rocky ? ` · ${[rocky.state, ...(rocky.reasons || [])].join(' · ')}` : ''}
+                </small>
+              </div>
+            </li>
+          ))}
+        </ul>
+        {h.recent.length > 0 && (
+          <ul className="hangar-recent">
+            {h.recent.map(r => (
+              <li key={r.recorded}>
+                <span>{shortTime(r.recorded)} · {r.duration_s ?? '?'} s</span>
+                <span className="hangar-runs">
+                  {Object.entries(r.runs || {}).map(([w, st]) => (
+                    <span key={w}><Dot status={RUN[st] || 'unknown'} label={`${w} ${st}`} />{w} {st}</span>
+                  ))}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="note card-foot"><Link to="/s/hangar">Details</Link> · counts only, transcripts stay on tiny.</p>
+      </article>
+    </Area>
+  );
+}
+
 // Notes written in the vault today
 function VaultCard({ v }) {
   if (!v) return null;
@@ -446,6 +498,7 @@ export default function Overview({ poll }) {
 
       <Checks checks={data.checks} />
       <Home home={data.home} />
+      <HangarCard h={data.hangar} />
       {(data.claude || data.vault) && (
         <div className="grid2">
           <ClaudeCard c={data.claude} />

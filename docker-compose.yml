@@ -67,6 +67,10 @@ services:
       - ${REPOS_DIR:-/home/alby/LocalGit}:/repos:ro
       # Vault for the "today" card (read-only)
       - "${VAULT_DIR:-/home/alby/Albyte (Obsidian)}:/vault:ro"
+      # Hangar (voice notes): status.json is replaced atomically every 15 s, so
+      # the folder is mounted (a single-file mount would keep the old inode).
+      # The dashboard reads status.json only.
+      - ${HANGAR_DATA_DIR:-/home/alby/hangar/data}:/hangar:ro
       # Claude usage numbers only, written by host-agent/claude-usage.py
       - ${CLAUDE_USAGE_DIR:-/home/alby/.local/state/claude-usage}:/claude-usage:ro
     labels:

@@ -13,6 +13,7 @@ import { claudeUsage } from '../sources/claude.js';
 import { vaultToday } from '../sources/vault.js';
 import { solar } from '../sources/solar.js';
 import { getRestic } from '../sources/restic.js';
+import { hangar, hangarExtras } from '../sources/hangar.js';
 
 const ok = v => v && !v.error;
 const RANK = { bad: 3, warn: 2, unknown: 1, ok: 0 };
@@ -70,7 +71,8 @@ function problems(config, d) {
   const add = (level, title, detail, since, link) => out.push({ level, title, detail, since, link });
 
   for (const s of d.services) {
-    if (s.status === 'bad') {
+    // Hangar's own rules below say more than its Gatus check failing
+    if (s.status === 'bad' && !(s.type === 'hangar' && d.hangar)) {
       const c = s.check;
       const why = c?.httpStatus ? `HTTP ${c.httpStatus}` : c?.errors?.[0] || 'check failing';
       add('bad', `${s.name} is failing its check`, why, c?.failingSince || null, `/s/${s.id}`);
@@ -101,6 +103,11 @@ function problems(config, d) {
         'not accepted yet', p.at, '/s/syncthing');
     }
   }
+  // Hangar (voice notes): down, failed jobs, or tiny stuck. Rocky queuing while asleep is fine.
+  if (d.hangar) {
+    if (d.hangar.error) add('warn', 'Hangar status not readable', d.hangar.error, null, '/s/hangar');
+    else for (const i of d.hangar.issues) add(i.level, i.title, i.detail, d.hangar.updated, '/s/hangar');
+  }
   // Backups of other machines (this host's own run is already a host-agent check)
   if (ok(d.restic)) {
     for (const h of d.restic.hosts) {
@@ -125,7 +132,7 @@ function problems(config, d) {
 export async function adminSnapshot() {
   const config = loadConfig();
   const ts = await getTailscale(config);
-  const [gatus, hosts, syncthing, repos, ag, net, sessions, added, requests, hum, bb, claude, vault, sun, tunnel] = await Promise.all([
+  const [gatus, hosts, syncthing, repos, ag, net, sessions, added, requests, hum, bb, claude, vault, sun, tunnel, voice] = await Promise.all([
     getGatus(config),
     Promise.all(config.hosts.map(h => hostTile(config, h, ts))),
     getSyncthing(config),
@@ -140,7 +147,8 @@ export async function adminSnapshot() {
     claudeUsage(config),
     vaultToday(config),
     solar(config),
-    vpn(config)
+    vpn(config),
+    hangar(config)
   ]);
   const vpnHost = hosts.find(h => h.name === config.sources.vpn?.host);
   const vpnSvc = allServices(config).find(s => s.type === 'qbittorrent');
@@ -152,7 +160,7 @@ export async function adminSnapshot() {
 
   const services = allServices(config).map(svc => {
     const { status, check } = serviceStatus(svc, gatus, hosts);
-    return { id: svc.id, kind: svc.kind, name: svc.name, host: svc.host, url: svc.url, status, check };
+    return { id: svc.id, kind: svc.kind, type: svc.type, name: svc.name, host: svc.host, url: svc.url, status, check };
   });
 
   const disks = hosts.flatMap(h => ok(h.agent) ? (h.agent.disks || []).map(dk => ({
@@ -191,6 +199,7 @@ export async function adminSnapshot() {
       ]
       : gatus,
     restic: getRestic(config),
+    hangar: voice ? (ok(voice) ? voice : { error: voice.error }) : null,
     home: { humidors: hum, betbot: bb },
     claude,
     vault,
@@ -377,6 +386,7 @@ export async function serviceSnapshot(id) {
     }
     if (svc.type === 'qbittorrent') extras = await torrentExtras(config);
     if (svc.type === 'restic') extras = resticExtras(getRestic(config));
+    if (svc.type === 'hangar') extras = hangarExtras(await hangar(config));
     if (svc.type === 'jellyfin') {
       const j = await jellyfinSessions(config);
       if (ok(j)) extras = [{ title: 'Watching now', rows: j.items.map(i => ({ label: i.title, value: i.device })), empty: 'Nobody is watching' }];

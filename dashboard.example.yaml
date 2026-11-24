@@ -135,6 +135,11 @@ sources:
     key: ${GLUETUN_API_KEY}
     host: tiny               # machine it runs on (skipped while that machine sleeps)
     provider: VPN
+  hangar:
+    # Voice notes pipeline (a tool with type: hangar). Hangar rewrites its
+    # data/status.json every 15 s by atomic replace, so mount the folder, not
+    # the file. Counts and states only.
+    file: /hangar/status.json
   restic:
     # Backups page (a tool with type: restic). Reads the status files the
     # backup job writes (last.json, check.json, repo.json), mounted read-only.

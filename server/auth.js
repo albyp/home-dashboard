@@ -150,7 +150,8 @@ export function authRouter() {
 }
 
 export function requireLogin(req, res, next) {
-  if (req.path === '/api/health') return next();
+  // Health checks for Gatus: status codes and problem titles only, no data
+  if (req.path === '/api/health' || req.path === '/api/health/hangar') return next();
   const role = configured() ? sessionRole(req) : null;
   if (role === 'admin') return next();
   if (role === 'kiosk') {
