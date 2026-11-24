@@ -68,9 +68,9 @@ services:
       # Vault for the "today" card (read-only)
       - "${VAULT_DIR:-/home/alby/Albyte (Obsidian)}:/vault:ro"
       # Hangar (voice notes): status.json is replaced atomically every 15 s, so
-      # the folder is mounted (a single-file mount would keep the old inode).
-      # The dashboard reads status.json only.
-      - ${HANGAR_DATA_DIR:-/home/alby/hangar/data}:/hangar:ro
+      # a folder is mounted (a single-file mount would keep the old inode). It is
+      # Hangar's status-only subfolder: nothing else of Hangar's is visible here.
+      - ${HANGAR_STATUS_DIR:-/home/alby/hangar/data/status}:/hangar:ro
       # Claude usage numbers only, written by host-agent/claude-usage.py
       - ${CLAUDE_USAGE_DIR:-/home/alby/.local/state/claude-usage}:/claude-usage:ro
     labels:

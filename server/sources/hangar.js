@@ -3,8 +3,8 @@ import { cached } from '../lib/cache.js';
 
 // Hangar: the voice-note pipeline on tiny (~/hangar, hangar.service). It
 // transcribes and summarises iPhone voice notes on tiny's CPU and rocky's GPU,
-// and rewrites data/status.json every 15 s (atomic replace). That folder is
-// mounted read-only; the file holds counts and states only, never transcripts.
+// and rewrites data/status/status.json every 15 s (atomic replace). Only that
+// status folder is mounted, read-only; it holds counts and states, never transcripts.
 //
 // sources.hangar.file   path inside the container (e.g. /hangar/status.json)
 
